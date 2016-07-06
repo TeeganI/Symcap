@@ -6,6 +6,8 @@ library(reshape2)
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
 Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
+View(Coral_Data)
+
 #analyzing depth distribution
 hist(Coral_Data$Depth..m.)
 Leeward=subset(Coral_Data, Reef.Area=="Leeward")
@@ -20,9 +22,9 @@ hist(Slope$Depth..m.)
 GPSData <- read.csv("GPS_Data.csv", skip = 27, stringsAsFactors = F)
 GPSData$ID <- as.numeric(as.character(GPSData$ID))
 GPSData <- GPSData[GPSData$ID>158,]
+stopat <- which(GPSData$ID=="")[1]  # Find first row where ID is blank
+GPSData <- GPSData[1:stopat-1, ]  # Remove all rows past the first blank row
 View(GPSData)
-stopat <- which(GPSData$ID=="")[1]  # Find first row where ID is blank...
-GPSData <- GPSData[1:stopat-1, ]  # Remove all rows past the first blank row...
 
 # Convert time from character object to time object
 GPSData$time <- as.POSIXct(GPSData$time, format="%Y-%m-%dT%H:%M:%SZ", tz="GMT")
@@ -37,4 +39,28 @@ Mcap <- steponeR(files = Mcap.plates, delim="\t",
                  fluor.norm = list(C=2.26827, D=0), 
                  copy.number=list(C=33, D=3))
 Mcap <- Mcap$result
-Mcap
+View(Mcap)
+
+#If C or D only detected in one technical replicate, set raio to 0
+Mcap$C.D[which(Mcap$C.reps==1)] <-NA
+Mcap$C.D[which(Mcap$D.reps==1)] <-NA
+View(Mcap)
+
+#Remove positive controls
+Mcap <- Mcap[grep("+", Mcap$Sample.Name, fixed=T, invert = T), ]
+
+#Remove NTCs
+Mcap <- Mcap[grep("NTC", Mcap$Sample.Name, fixed = T, invert = T), ]
+
+#Replace "Sample.Name" column with "Colony"
+colnames(Mcap)[which(colnames(Mcap)=="Sample.Name")] <- "Colony"
+
+#Remove failed samples
+Mcap$fail <- ifelse(Mcap$C.reps < 2 & Mcap$D.reps < 2, TRUE, FALSE)
+fails <- Mcap[Mcap$fail==TRUE, ]
+Mcap <- Mcap[which(Mcap$fail==FALSE),]
+View(Mcap)
+
+#Order by Colony
+Mcap <- Mcap[with(Mcap, order(Colony)), ]
+View(Mcap)
