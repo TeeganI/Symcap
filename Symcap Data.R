@@ -29,6 +29,7 @@ View(GPSData)
 # Convert time from character object to time object
 GPSData$time <- as.POSIXct(GPSData$time, format="%Y-%m-%dT%H:%M:%SZ", tz="GMT")
 GPSData$hst <- format(GPSData$time, tz="Pacific/Honolulu")
+View(GPSData)
 
 # Importing qPCR data
 source_url("https://raw.githubusercontent.com/jrcunning/steponeR/master/steponeR.R")
@@ -39,11 +40,6 @@ Mcap <- steponeR(files = Mcap.plates, delim="\t",
                  fluor.norm = list(C=2.26827, D=0), 
                  copy.number=list(C=33, D=3))
 Mcap <- Mcap$result
-View(Mcap)
-
-#If C or D only detected in one technical replicate, set raio to 0
-Mcap$C.D[which(Mcap$C.reps==1)] <-NA
-Mcap$C.D[which(Mcap$D.reps==1)] <-NA
 View(Mcap)
 
 #Remove positive controls
@@ -61,6 +57,34 @@ fails <- Mcap[Mcap$fail==TRUE, ]
 Mcap <- Mcap[which(Mcap$fail==FALSE),]
 View(Mcap)
 
+#When C or D detected in only 1 sample, set ratio to +/- Inf
+Mcap$C.D[which(Mcap$C.reps<2)] <--Inf
+Mcap$C.D[which(Mcap$D.reps<2)] <-Inf
+
 #Order by Colony
 Mcap <- Mcap[with(Mcap, order(Colony)), ]
 View(Mcap)
+
+#Proportion C
+Mcap$propC <- Mcap$C.D / (Mcap$C.D+1)
+
+#Proportion D
+Mcap$propD <- 1-Mcap$propC
+Mcap$propD[which(Mcap$C.D==-Inf)] <-1
+Mcap$propC[which(Mcap$C.D==-Inf)] <-0
+Mcap$propD[which(Mcap$C.D==Inf)] <-0
+Mcap$propC[which(Mcap$C.D==Inf)] <-1
+
+#Dominant Symbiont type
+Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
+
+#Merge datasets
+Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
+
+#Chi Squared test for independence
+total=table(Symcap$Color.Morph, Symcap$Dom)
+total
+chisq.test(total)
+
+#Mosaic Plot
+mosaicplot(total, ylab = "Color Morph", xlab = "Dominant Symbiont", main = "")
