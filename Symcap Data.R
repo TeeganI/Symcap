@@ -65,13 +65,26 @@ Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
 Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 
 #Chi Squared test for independence
-total=table(Symcap$Color.Morph, Symcap$Dom)
+total=table(Symcap$Depth..m., Symcap$Dom)
 chisq.test(total)
 total
 Slope <- subset(Symcap, Reef.Area!="Slope")
 Slope$Reef.Area <- droplevels(Slope$Reef.Area)
-total=table(Slope$Reef.Area, Slope$Color.Morph)
+total=table(Slope$Reef.Area, Slope$Dom)
 chisq.test(total)
 
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
+
+#Logistic Regression
+results=glm(propC~Depth..m., family = binomial(), data = Symcap)
+anova(results, test = "Chisq")
+plot(results)
+summary(results) 
+exp(coef(results)) #how odds change
+exp(confint.default(results)) #95% confidence interval
+pi.hat=predict.glm(results, data.frame(Depth..m.=5.1), type = "response", se.fit = TRUE) #predict probability
+pi.hat$fit
+I.hat=predict.glm(results, data.frame(Depth..m.=5.1), se.fit = TRUE) #95% confidence interval for estimate
+ci=c(I.hat$se.fit-1.96*I.hat$se.fit, I.hat$fit+1.96*I.hat$se.fit)
+exp(ci)/(1+exp(ci)) #transform results to probabilities 
