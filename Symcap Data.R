@@ -76,11 +76,14 @@ chisq.test(total)
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
 
-#Logistic Regression
-results=glm(propC~Depth..m., family = binomial(), data = Symcap)
+#Logistic Regression/ANOVA
+Symcap$Dom <- as.factor(Symcap$Dom)
+results=glm(Dom~Depth..m., family = "binomial", data = Symcap)
 anova(results, test = "Chisq")
+summary(results)
+
 plot(results)
-summary(results) 
+ 
 exp(coef(results)) #how odds change
 exp(confint.default(results)) #95% confidence interval
 pi.hat=predict.glm(results, data.frame(Depth..m.=5.1), type = "response", se.fit = TRUE) #predict probability
