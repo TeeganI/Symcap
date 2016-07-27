@@ -65,7 +65,7 @@ Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
 Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 
 #Chi Squared test for independence
-total=table(Symcap$Depth..m., Symcap$Dom)
+total=table(Symcap$Color.Morph, Symcap$Reef.Area)
 chisq.test(total)
 total
 Slope <- subset(Symcap, Reef.Area!="Slope")
