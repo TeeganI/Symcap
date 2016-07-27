@@ -65,24 +65,47 @@ Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
 Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 
 #Chi Squared test for independence
-total=table(Symcap$Color.Morph, Symcap$Reef.Area)
+total=table(Symcap$Reef.Area, Symcap$Color.Morph)
+chisq.test(total)
+prop.table(total, margin=2)
+Slope <- subset(Symcap, Reef.Area!="Top")
+Slope$Reef.Area <- droplevels(Slope$Reef.Area)
+total=table(Slope$Color.Morph, Slope$Reef.Area)
 chisq.test(total)
 total
-Slope <- subset(Symcap, Reef.Area!="Slope")
-Slope$Reef.Area <- droplevels(Slope$Reef.Area)
-total=table(Slope$Reef.Area, Slope$Dom)
+
+Symcap$Slope <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+total=table(Symcap$Color.Morph, Symcap$Slope)
+total
 chisq.test(total)
+prop.table(total, margin = 2)
+par(mar=c(3, 4, 2, 6))
+barplot(prop.table(total, margin = 2), col = c("gray20", "gray95"), xlab = "Color Morph", ylab = "Proportion of Dominant Symbiont")
+legend("topright", legend=c("C","D"), fill=c("gray20", "gray95"), inset = c(-.2, 0), xpd = NA)
+
+#Export Image
+pdf(file="Dom~Color.pdf", height = 3, width = 5)
+Symcap$Slope <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+total=table(Symcap$Dom, Symcap$Color.Morph)
+total
+chisq.test(total)
+prop.table(total, margin = 2)
+par(mar=c(4, 4, 2, 7))
+barplot(prop.table(total, margin = 2), col = c("gray20", "gray95"), xlab = "Color Morph", ylab = "Dominant Symbiont Proportion")
+legend("topright", legend=c("C","D"), fill=c("gray20", "gray95"), inset = c(-.4, 0), xpd = NA)
+dev.off()
 
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
 
 #Logistic Regression/ANOVA
 Symcap$Dom <- as.factor(Symcap$Dom)
-results=glm(Dom~Depth..m., family = "binomial", data = Symcap)
+results=glm(Color~Depth..m., family = "binomial", data = Symcap)
 anova(results, test = "Chisq")
 summary(results)
-
 plot(results)
+
+plot(Symcap$Color.Morph~Symcap$Depth..m.)
  
 exp(coef(results)) #how odds change
 exp(confint.default(results)) #95% confidence interval
@@ -91,3 +114,23 @@ pi.hat$fit
 I.hat=predict.glm(results, data.frame(Depth..m.=5.1), se.fit = TRUE) #95% confidence interval for estimate
 ci=c(I.hat$se.fit-1.96*I.hat$se.fit, I.hat$fit+1.96*I.hat$se.fit)
 exp(ci)/(1+exp(ci)) #transform results to probabilities 
+
+#Plot Color Morph and Depth
+Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 0, 1)
+plot(Symcap$Color~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Color Morph")
+Symcap$Dom <- as.factor(Symcap$Dom)
+results=glm(Color~Depth..m., family = "binomial", data = Symcap)
+anova(results, test = "Chisq")
+summary(results)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "response")
+lines(fitted ~ seq(0,8,0.1))
+
+#Plot Dominant Symbiont and Depth
+Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
+plot(Symcap$Dominant~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+Symcap$Dom <- as.factor(Symcap$Dom)
+results=glm(Dominant~Depth..m., family = "binomial", data = Symcap)
+anova(results, test = "Chisq")
+summary(results)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "response")
+lines(fitted ~ seq(0,8,0.1))
