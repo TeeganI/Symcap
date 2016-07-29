@@ -2,6 +2,8 @@ library(data.table)
 library(devtools)
 library(plyr)
 library(reshape2)
+library(popbio)
+library(RgoogleMaps)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -84,15 +86,12 @@ barplot(prop.table(total, margin = 2), col = c("gray20", "gray95"), xlab = "Colo
 legend("topright", legend=c("C","D"), fill=c("gray20", "gray95"), inset = c(-.2, 0), xpd = NA)
 
 #Export Image
-pdf(file="Dom~Color.pdf", height = 3, width = 5)
-Symcap$Slope <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-total=table(Symcap$Dom, Symcap$Color.Morph)
-total
-chisq.test(total)
-prop.table(total, margin = 2)
-par(mar=c(4, 4, 2, 7))
-barplot(prop.table(total, margin = 2), col = c("gray20", "gray95"), xlab = "Color Morph", ylab = "Dominant Symbiont Proportion")
-legend("topright", legend=c("C","D"), fill=c("gray20", "gray95"), inset = c(-.4, 0), xpd = NA)
+pdf(file="Color~Depth.pdf", height = 4, width = 5)
+par(mar=c(0, 4, 0, 4))
+logi.hist.plot(Symcap$Depth..m., Symcap$Color, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of Brown Color Morph", line = 3, cex = 1)
 dev.off()
 
 #Mosaic Plot
@@ -105,7 +104,7 @@ anova(results, test = "Chisq")
 summary(results)
 plot(results)
 
-plot(Symcap$Color.Morph~Symcap$Depth..m.)
+plot(Symcap$Dom~Symcap$Depth..m.)
  
 exp(coef(results)) #how odds change
 exp(confint.default(results)) #95% confidence interval
@@ -116,7 +115,7 @@ ci=c(I.hat$se.fit-1.96*I.hat$se.fit, I.hat$fit+1.96*I.hat$se.fit)
 exp(ci)/(1+exp(ci)) #transform results to probabilities 
 
 #Plot Color Morph and Depth
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 0, 1)
+Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 1, 0)
 plot(Symcap$Color~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Color Morph")
 Symcap$Dom <- as.factor(Symcap$Dom)
 results=glm(Color~Depth..m., family = "binomial", data = Symcap)
@@ -126,7 +125,7 @@ fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "respo
 lines(fitted ~ seq(0,8,0.1))
 
 #Plot Dominant Symbiont and Depth
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
+Symcap$Dominant <- ifelse(Symcap$Dom=="C", 1, 0)
 plot(Symcap$Dominant~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
 Symcap$Dom <- as.factor(Symcap$Dom)
 results=glm(Dominant~Depth..m., family = "binomial", data = Symcap)
@@ -134,3 +133,19 @@ anova(results, test = "Chisq")
 summary(results)
 fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "response")
 lines(fitted ~ seq(0,8,0.1))
+
+#Logistic Regression/Histogram Plot
+logi.hist.plot(Symcap$Depth..m., Symcap$Color, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of Brown Color Morph", line = 3, cex = 1)
+
+
+logi.hist.plot(Dom1$Depth..m., Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "C                                     D", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of clade D Symbiont", line = 3, cex = 1)
+
+#RGoogleMaps
+KB <- c(21.46323, -157.81248)
+KBMap <- GetMap(center = KB, zoom = 10, maptype = "satellite", SCALE = 2)
