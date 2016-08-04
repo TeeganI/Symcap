@@ -66,13 +66,13 @@ Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-total=table(Symcap$Mix, Symcap$Dom)
+total=table(Symcap$Color.Morph, Symcap$Reef.Area)
 total
 chisq.test(total)
 prop.table(total, margin = 2)
 par(mar=c(3, 4, 2, 6))
-barplot(prop.table(total, margin = 2), col = c("gray25", "gray92", "gray50", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
-legend("topright", legend=c("C","CD", "D", "DC"), fill=c("gray25", "gray92", "gray50", "gray100"), inset = c(-.2, 0), xpd = NA)
+barplot(prop.table(total, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
+legend("topright", legend=c("Brown", "Orange"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
 
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
