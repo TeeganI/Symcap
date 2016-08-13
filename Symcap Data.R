@@ -40,7 +40,7 @@ Mcap <- Mcap[which(Mcap$fail==FALSE),]
 Mcap$C.D[which(Mcap$C.reps<2)] <- -Inf
 Mcap$C.D[which(Mcap$D.reps<2)] <- Inf
 
-#Order by Colony
+#Order Mcap by Colony
 Mcap <- Mcap[with(Mcap, order(Colony)), ]
 
 #Proportion C
@@ -61,12 +61,15 @@ Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
 #Merge datasets
 Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 
+#Order Symcap by Colony
+Symcap <- Symcap[with(Symcap, order(Colony)), ]
+
 #Identify Symbiont clades present
 Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-total=table(Symcap$Color.Morph, Symcap$Reef.Area)
+total=table(Symcap$Mix, Symcap$Color.Morph)
 total
 chisq.test(total)
 prop.table(total, margin = 2)
@@ -125,6 +128,6 @@ mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 dev.off()
 
 #RGoogleMaps
-KB <- c(21.47285, -157.82936) 
-KBMap <- GetMap(center = KB, zoom = 15, maptype = "satellite", SCALE = 2)
-PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c("red", "blue")[Symcap$Color.Morph], pch=c(1, 2)[Symcap$Dom])
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2)
+PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c("red"))
