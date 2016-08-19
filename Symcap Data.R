@@ -94,8 +94,8 @@ plot(Symcap$Color~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Colo
 results=glm(Color~Depth..m., family = "binomial", data = Symcap)
 anova(results, test = "Chisq")
 summary(results)
-fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "response")
-lines(fitted ~ seq(0,8,0.1))
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
+lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
 Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
@@ -103,8 +103,8 @@ plot(Symcap$Dominant~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of D
 results=glm(Dominant~Depth..m., family = "binomial", data = Symcap)
 anova(results, test = "Chisq")
 summary(results)
-fitted <- predict(results, newdata = list(Depth..m.=seq(0,8,0.1)), type = "response")
-lines(fitted ~ seq(0,8,0.1))
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
+lines(fitted ~ seq(0,12,0.1))
 
 #Logistic Regression/Histogram Plot
 logi.hist.plot(independ = Symcap$Depth..m., depend = Symcap$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
@@ -131,3 +131,27 @@ dev.off()
 KB <- c(21.46087401, -157.809907) 
 KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2)
 PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c("red"))
+
+
+
+#Plot Dominant Symbiont vs. Depth and find threshold depth of D to C dominance
+threshdepth <- function(reef) {
+  df <- subset(Symcap, Reef.ID==reef)
+  plot(df$Dominant~df$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+  results=glm(Dominant~Depth..m., family = "binomial", data = df)
+  anova(results, test = "Chisq")
+  summary(results)
+  newdata <- list(Depth..m.=seq(0,12,0.1))
+  fitted <- predict(results, newdata = newdata, type = "response")
+  lines(fitted ~ seq(0,12,0.1))
+  thresh <- newdata$Depth..m.[which.min(abs(fitted - 0.5))]
+  return(thresh)
+}
+
+threshdepth(42)
+threshdepth("HIMB")
+threshdepth(21)
+threshdepth(46)
+threshdepth(18)
+threshdepth("F9-5")
+threshdepth("F8-10")
