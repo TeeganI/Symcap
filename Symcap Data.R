@@ -4,6 +4,7 @@ library(plyr)
 library(reshape2)
 library(popbio)
 library(RgoogleMaps)
+library(plotrix)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -69,13 +70,18 @@ Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-total=table(Symcap$Mix, Symcap$Color.Morph)
-total
-chisq.test(total)
-prop.table(total, margin = 2)
+ReefArea=table(Symcap$Dom, Symcap$Reef.Area)
+ReefArea
+chisq.test(ReefArea)
+prop.table(ReefArea, margin = 2)
 par(mar=c(3, 4, 2, 6))
-barplot(prop.table(total, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
-legend("topright", legend=c("Brown", "Orange"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
+barplot(prop.table(ReefArea, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
+legend("topright", legend=c("C", "D"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
+
+Type=table(Symcap$Mix, Symcap$Reef.Type)
+Type
+chisq.test(Type)
+prop.table(Type, margin = 2)
 
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
@@ -119,15 +125,59 @@ mtext(side = 4, text = "C                                     D", line = 2, cex 
 mtext(side = 2, text = "Probability of clade D Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="Color~Depth.pdf", height = 4, width = 5)
-par(mar=c(4, 4, 4, 4))
-logi.hist.plot(Symcap$Depth..m., Symcap$Color, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
-mtext(side = 4, text = "Frequency", line = 3, cex=1)
-mtext(side = 4, text = "Brown                                   Orange", line = 2, cex = 0.75)
-mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
+pdf(file="Dom~Area", height = 4, width = 5)
+par(mar=c(3, 4, 2, 5))
+barplot(prop.table(ReefArea, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
+legend("topright", legend=c("C", "D"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
 dev.off()
 
 #RGoogleMaps
 KB <- c(21.46087401, -157.809907) 
 KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2)
-PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c("red"))
+PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c(""))
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propDom=table(Symcap$Dom, Symcap$Reef.ID)
+propDom=prop.table(propDom, margin = 2)
+propDom <- as.data.frame.matrix(propDom)
+props <- data.frame(t(propDom))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+
+rownames(XY) <- XY$Reef.ID
+XY <- XY[, -1]
+XY <- na.omit(XY)
+apply(XY, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["C"], reef["D"]), radius = 7, col = c("#0571b0", "#ca0020"))
+})
+
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propMix=table(Symcap$Mix, Symcap$Reef.ID)
+propMix=prop.table(propMix, margin = 2)
+propMix[which(propMix==0)] <- 0.0000001
+propMix <- as.data.frame.matrix(propMix)
+props <- data.frame(t(propMix))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+
+# convert to matrix and get rid of reef.id column
+rownames(XY) <- XY$Reef.ID
+XY <- XY[, -1]
+XY <- na.omit(XY)
+apply(XY, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["C"], reef["CD"], reef["DC"], reef["D"]), radius = 7, col = c("#0571b0","#92c5de","#f4a582","#ca0020"))
+})
+
+
+
