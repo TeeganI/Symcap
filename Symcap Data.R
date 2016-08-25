@@ -70,13 +70,13 @@ Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-ReefArea=table(Symcap$Dom, Symcap$Reef.Area)
-ReefArea
-chisq.test(ReefArea)
-prop.table(ReefArea, margin = 2)
+results=table(Symcap$propC, Symcap$Bay.Area)
+results
+chisq.test(results)
+prop.table(results, margin = 2)
 par(mar=c(3, 4, 2, 6))
-barplot(prop.table(ReefArea, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
-legend("topright", legend=c("C", "D"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Reef Area", ylab = "Symbiont Clade Proportion")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray40", "gray70", "gray100"), inset = c(-.2, 0), xpd = NA)
 
 Type=table(Symcap$Mix, Symcap$Reef.Type)
 Type
@@ -105,37 +105,38 @@ lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
 Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-plot(Symcap$Dominant~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
-results=glm(Dominant~Depth..m., family = "binomial", data = Symcap)
+plot(Symcap$propC~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+results=glm(propC~Depth..m., family = "binomial", data = Symcap)
 anova(results, test = "Chisq")
 summary(results)
 fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
 lines(fitted ~ seq(0,12,0.1))
 
 #Logistic Regression/Histogram Plot
+Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 1, 0)
 logi.hist.plot(independ = Symcap$Depth..m., depend = Symcap$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
 mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 
-Dom1 <- subset(Symcap, Dominant!="NA")
+Dom1 <- subset(Symcap, !is.na(Depth..m.) & !is.na(Dominant))
 logi.hist.plot(Dom1$Depth..m., Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
-mtext(side = 4, text = "C                                     D", line = 2, cex = 0.75)
+mtext(side = 4, text = "C                                       D", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of clade D Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="Dom~Area", height = 4, width = 5)
-par(mar=c(3, 4, 2, 5))
-barplot(prop.table(ReefArea, margin = 2), col = c("gray25", "gray100"), xlab = "Proportion of Colonies", ylab = "Dominant Symbiont")
-legend("topright", legend=c("C", "D"), fill=c("gray25", "gray100"), inset = c(-.2, 0), xpd = NA)
+pdf(file="Coral Collection", height = 4, width = 5)
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "roadmap", SCALE = 2, GRAYSCALE = TRUE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#7FFFD4", lwd=2)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 dev.off()
 
 #RGoogleMaps
 KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2)
-<<<<<<< HEAD
-PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c(""))
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "roadmap", SCALE = 2, GRAYSCALE = TRUE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#7FFFD4", lwd=2)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -154,7 +155,7 @@ XY <- XY[, -1]
 XY <- na.omit(XY)
 apply(XY, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["C"], reef["D"]), radius = 7, col = c("#0571b0", "#ca0020"))
+               x=c(reef["C"]), radius = 5, col = c("#7FFFD4"))
 })
 
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
@@ -180,27 +181,27 @@ apply(XY, MARGIN=1, FUN=function(reef) {
                x=c(reef["C"], reef["CD"], reef["DC"], reef["D"]), radius = 7, col = c("#0571b0","#92c5de","#f4a582","#ca0020"))
 })
 
-
-
-=======
-PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, col=c("red"))
-
-
-
 #Plot Dominant Symbiont vs. Depth and find threshold depth of D to C dominance
 threshdepth <- function(reef) {
   df <- subset(Symcap, Reef.ID==reef)
-  plot(df$Dominant~df$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+  plot(df$Dominant~df$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont",
+       main=reef)
+  abline(h = 0.5, lty=2)
   results=glm(Dominant~Depth..m., family = "binomial", data = df)
-  anova(results, test = "Chisq")
-  summary(results)
-  newdata <- list(Depth..m.=seq(0,12,0.1))
+  pval <- data.frame(coef(summary(results)))$`Pr...z..`[2]
+  mtext(side=3, text=round(pval, 3))
+  newdata <- list(Depth..m.=seq(0,12,0.01))
   fitted <- predict(results, newdata = newdata, type = "response")
-  lines(fitted ~ seq(0,12,0.1))
-  thresh <- newdata$Depth..m.[which.min(abs(fitted - 0.5))]
+  lines(fitted ~ seq(0,12,0.01))
+  thresh <- ifelse(pval < 0.05,
+                   newdata$Depth..m.[which(diff(sign(fitted - 0.5))!=0)], NA)
   return(thresh)
 }
 
+sapply(levels(Symcap$Reef.ID), FUN=threshdepth)
+levels(Symcap$Reef.ID)
+
+threshdepth("Deep")
 threshdepth(42)
 threshdepth("HIMB")
 threshdepth(21)
@@ -208,4 +209,3 @@ threshdepth(46)
 threshdepth(18)
 threshdepth("F9-5")
 threshdepth("F8-10")
->>>>>>> b49a7075501ef834185fa4b6a7b13e940dc9aa47
