@@ -5,6 +5,7 @@ library(reshape2)
 library(popbio)
 library(RgoogleMaps)
 library(plotrix)
+library(zoo)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -68,14 +69,48 @@ Symcap <- Symcap[with(Symcap, order(Colony)), ]
 #Identify Symbiont clades present
 Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
 
+#Adjust depth by sea level
+JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
+JulyTide=read.csv("Station_1612480_tide_ht_20160701-20160731.csv")
+Tide<-rbind(JuneTide, JulyTide)
+Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
+attributes(Tide$Time)$tzone <- "Pacific/Honolulu"
+plot(Tide$Time, Tide$TideHT, type = "l", xlab = "Date", ylab = "Tide Height, meters")
+with(Tide[Tide$Time > "2016-06-07 00:00:00" & Tide$Time < "2016-06-09 00:00:00", ], 
+     plot(Time, TideHT, type="l"))
+Symcap$Time2 <- as.POSIXct(paste(as.character(Symcap$Date), as.character(Symcap$Time)),
+                                format="%m/%d/%y %H:%M", tz="Pacific/Honolulu")
+Symcap$Time=Symcap$Time2
+
+Round6 <- function (times)  {
+  x <- as.POSIXlt(times)
+  mins <- x$min
+  mult <- mins %/% 6
+  remain <- mins %% 6
+  if(remain > 3L) {
+    mult <- mult + 1
+  } else {
+    x$min <- 6 * mult
+  }
+  x <- as.POSIXct(x)
+  x
+}
+
+Symcap$Time.r <- Round6(Symcap$Time)
+Tide$Time.r <- Tide$Time
+
+merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
+
+merged$newDepth <- merged$Depth..m.- merged$TideHT
+
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$propC, Symcap$Bay.Area)
+results=table(Symcap$Mix, Symcap$Reef.Area)
 results
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(3, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Reef Area", ylab = "Symbiont Clade Proportion")
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Reef Area", ylab = "Symbiont Community Composition")
 legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray40", "gray70", "gray100"), inset = c(-.2, 0), xpd = NA)
 
 Type=table(Symcap$Mix, Symcap$Reef.Type)
@@ -126,11 +161,15 @@ mtext(side = 4, text = "C                                       D", line = 2, ce
 mtext(side = 2, text = "Probability of clade D Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="Coral Collection", height = 4, width = 5)
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "roadmap", SCALE = 2, GRAYSCALE = TRUE)
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#7FFFD4", lwd=2)
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+pdf(file="Mix~Color Morph", height = 4, width = 6)
+Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+results=table(Symcap$Mix, Symcap$Color.Morph)
+results
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray40", "gray70", "gray100"), inset = c(-.2, 0), xpd = NA)
 dev.off()
 
 #RGoogleMaps
