@@ -81,7 +81,6 @@ with(Tide[Tide$Time > "2016-06-07 00:00:00" & Tide$Time < "2016-06-09 00:00:00",
 Symcap$Time2 <- as.POSIXct(paste(as.character(Symcap$Date), as.character(Symcap$Time)),
                                 format="%m/%d/%y %H:%M", tz="Pacific/Honolulu")
 Symcap$Time=Symcap$Time2
-
 Round6 <- function (times)  {
   x <- as.POSIXlt(times)
   mins <- x$min
@@ -95,23 +94,20 @@ Round6 <- function (times)  {
   x <- as.POSIXct(x)
   x
 }
-
 Symcap$Time.r <- Round6(Symcap$Time)
 Tide$Time.r <- Tide$Time
-
 merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
-
 merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$Mix, Symcap$Reef.Area)
+results=table(Symcap$Dom, Symcap$Reef.Area)
 results
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(3, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Reef Area", ylab = "Symbiont Community Composition")
-legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray40", "gray70", "gray100"), inset = c(-.2, 0), xpd = NA)
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Proportion of Dominant Symbiont")
+legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 
 Type=table(Symcap$Mix, Symcap$Reef.Type)
 Type
@@ -139,9 +135,9 @@ fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "resp
 lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-plot(Symcap$propC~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
-results=glm(propC~Depth..m., family = "binomial", data = Symcap)
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+plot(merged$Dominant~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+results=glm(Dominant~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 summary(results)
 fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
@@ -174,8 +170,7 @@ dev.off()
 
 #RGoogleMaps
 KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "roadmap", SCALE = 2, GRAYSCALE = TRUE)
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#7FFFD4", lwd=2)
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -188,6 +183,11 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
+
+Oahu <- c(21.468912, -158.000057)
+OahuMap <- GetMap(center = Oahu, zoom = 10, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(OahuMap)
 
 rownames(XY) <- XY$Reef.ID
 XY <- XY[, -1]

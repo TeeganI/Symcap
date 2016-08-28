@@ -1,0 +1,124 @@
+---
+title: "Symcap"
+author: "Teegan Innis"
+date: "August 26, 2016"
+output: html_document
+---
+--------------------------------------------------------------------------------------
+### Library Packages
+```{r Library Packages Needed, warning=FALSE, message=FALSE}
+library(data.table)
+library(devtools)
+library(plyr)
+library(reshape2)
+library(popbio)
+library(RgoogleMaps)
+library(plotrix)
+library(zoo)
+```
+
+
+### Import/Merge Field and qPCR Data
+```{r Import Data, warning=FALSE, message=FALSE}
+Coral_Data <- read.csv("Coral_Collection.csv")
+Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
+source_url("https://raw.githubusercontent.com/jrcunning/steponeR/master/steponeR.R")
+Mcap.plates <- list.files(path = "qPCR_data", pattern = "txt$", full.names = T)
+Mcap <- steponeR(files = Mcap.plates, delim="\t",
+                 target.ratios=c("C.D"), 
+                 fluor.norm = list(C=2.26827, D=0), 
+                 copy.number=list(C=33, D=3))
+Mcap <- Mcap$result
+Mcap <- Mcap[grep("+", Mcap$Sample.Name, fixed=T, invert = T), ]
+Mcap <- Mcap[grep("NTC", Mcap$Sample.Name, fixed = T, invert = T), ]
+Mcap <- Mcap[grep("PCT", Mcap$Sample.Name, fixed = T, invert = T), ]
+colnames(Mcap)[which(colnames(Mcap)=="Sample.Name")] <- "Colony"
+Mcap$fail <- ifelse(Mcap$C.reps < 2 & Mcap$D.reps < 2, TRUE, FALSE)
+fails <- Mcap[Mcap$fail==TRUE, ]
+Mcap <- Mcap[which(Mcap$fail==FALSE),]
+Mcap$C.D[which(Mcap$C.reps<2)] <- -Inf
+Mcap$C.D[which(Mcap$D.reps<2)] <- Inf
+Mcap <- Mcap[with(Mcap, order(Colony)), ]
+Mcap$propC <- Mcap$C.D / (Mcap$C.D+1)
+Mcap$propD <- 1-Mcap$propC
+Mcap$propD[which(Mcap$C.D==-Inf)] <-1
+Mcap$propC[which(Mcap$C.D==-Inf)] <-0
+Mcap$propD[which(Mcap$C.D==Inf)] <-0
+Mcap$propC[which(Mcap$C.D==Inf)] <-1
+Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
+Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
+Symcap <- Symcap[with(Symcap, order(Colony)), ]
+Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
+```
+
+
+### Coral Collection Map
+```{r Collection Map}
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
+```
+
+
+### Dominant Symbiont by Reef Area
+```{r Dom~ReefArea}
+Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+results=table(Symcap$Dom, Symcap$Reef.Area)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Proportion of Dominant Symbiont")
+legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
+### Dominant Symbiont by Color Morph
+```{r Dom~ColorMorph}
+results=table(Symcap$Dom, Symcap$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Proportion of Dominant Symbiont")
+legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
+### Symbiont Community Composition by Reef Area
+```{r Mix~ReefArea, warning=FALSE}
+Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+results=table(Symcap$Mix, Symcap$Reef.Area)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Reef Area", ylab = "Symbiont Community Composition")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
+### Symbiont Community Composition by Color Morph
+```{r Mix~ColorMorph, warning=FALSE}
+results=table(Symcap$Mix, Symcap$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
+### Color Morph by Reef Area
+```{r ColorMorph~ReefArea}
+Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+results=table(Symcap$Color.Morph, Symcap$Reef.Area)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph")
+legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
