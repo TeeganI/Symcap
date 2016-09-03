@@ -1,12 +1,17 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "August 26, 2016"
+date: "August 31, 2016"
 output: html_document
 ---
 --------------------------------------------------------------------------------------
+### Project Summary
+This project aimed to look at the spatial variability of Symbiodinium clades C and D in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distribution of symbionts at scales ranging from location in the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch), colony color morph (brown vs. orange) and depth. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of Symbiodinium, we furthered the understanding of stress-response potential in Kane'ohe Bay.
+
+
 ### Library Packages
 ```{r Library Packages Needed, warning=FALSE, message=FALSE}
+setwd("~/Symcap")
 library(data.table)
 library(devtools)
 library(plyr)
@@ -52,6 +57,35 @@ Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "
 ```
 
 
+### Adjust Depth by Mean Sea Level
+```{r Adjust Depth, warning=FALSE, message=FALSE, results='hide'}
+JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
+JulyTide=read.csv("Station_1612480_tide_ht_20160701-20160731.csv")
+Tide<-rbind(JuneTide, JulyTide)
+Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
+attributes(Tide$Time)$tzone <- "Pacific/Honolulu"
+Symcap$Time2 <- as.POSIXct(paste(as.character(Symcap$Date), as.character(Symcap$Time)), format="%m/%d/%y %H:%M", tz="Pacific/Honolulu")
+Symcap$Time=Symcap$Time2
+Round6 <- function (times)  {
+  x <- as.POSIXlt(times)
+  mins <- x$min
+  mult <- mins %/% 6
+  remain <- mins %% 6
+  if(remain > 3L) {
+    mult <- mult + 1
+  } else {
+    x$min <- 6 * mult
+  }
+  x <- as.POSIXct(x)
+  x
+}
+Symcap$Time.r <- Round6(Symcap$Time)
+Tide$Time.r <- Tide$Time
+merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
+merged$newDepth <- merged$Depth..m.- merged$TideHT
+```
+
+
 ### Coral Collection Map
 ```{r Collection Map}
 KB <- c(21.46087401, -157.809907) 
@@ -89,6 +123,17 @@ legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.
 ```
 
 
+### Symbiont Community Composition by Color Morph
+```{r Mix~ColorMorph, warning=FALSE}
+results=table(Symcap$Mix, Symcap$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
 ### Symbiont Community Composition by Reef Area
 ```{r Mix~ReefArea, warning=FALSE}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
@@ -97,17 +142,6 @@ chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
 barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Reef Area", ylab = "Symbiont Community Composition")
-legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
-```
-
-
-### Symbiont Community Composition by Color Morph
-```{r Mix~ColorMorph, warning=FALSE}
-results=table(Symcap$Mix, Symcap$Color.Morph)
-chisq.test(results)
-prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
 legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
@@ -121,4 +155,30 @@ prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
 barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph")
 legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+```
+
+
+### Dominant Symbiont by Depth
+```{r Dom~Depth}
+merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+Dom1 <- subset(merged, !is.na(newDepth) & !is.na(Dominant))
+results=glm(Dominant~newDepth, family = "binomial", data = merged)
+anova(results, test = "Chisq")
+logi.hist.plot(Dom1$newDepth, Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "C                                       D", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
+```
+
+
+### Color Morph by Depth
+```{r ColorMorph~Depth}
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+results=glm(Color~newDepth, family = "binomial", data = merged)
+anova(results, test = "Chisq")
+Color <- subset(merged, !is.na(newDepth) & !is.na(Color))
+logi.hist.plot(independ = Color$newDepth, depend = Color$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 ```

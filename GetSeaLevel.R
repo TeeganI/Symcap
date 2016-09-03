@@ -44,7 +44,7 @@ year2 = 2016 #Enter the last year of data to get here (can be same as 1st year)
 for (yr in year:year2) {
   leap = leap.year(yr) #test if desired year is a leap year
   
-  for (mo in 6:7) { #start of mo for-loop
+  for (mo in 6:8) { #start of mo for-loop
     
     #create text string for month value
     if (mo < 10) {month = paste("0",as.character(mo),sep="")} else {

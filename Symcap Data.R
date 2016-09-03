@@ -1,3 +1,4 @@
+setwd("~/Symcap")
 library(data.table)
 library(devtools)
 library(plyr)
@@ -101,7 +102,7 @@ merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 #Chi Squared test for independence
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$Dom, Symcap$Reef.Area)
+results=table(Symcap$Mix, Symcap$Color.Morph)
 results
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -125,13 +126,15 @@ summary(results)
 plot(results)
 plot(Symcap$Dom~Symcap$Depth..m.)
 
+Symcap$Dominant <- ifelse(Symcap$Dom=="C", 1, 0)
+
 #Plot Color Morph and Depth
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 1, 0)
-plot(Symcap$Color~Symcap$Depth..m., xlab="Depth (m)", ylab = "Proportion of Color Morph")
-results=glm(Color~Depth..m., family = "binomial", data = Symcap)
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+plot(merged$Color~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Color Morph")
+results=glm(Color~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 summary(results)
-fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
+fitted <- predict(results, newdata = list(newDepth=seq(0,12,0.1)), type = "response")
 lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
@@ -144,17 +147,18 @@ fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "resp
 lines(fitted ~ seq(0,12,0.1))
 
 #Logistic Regression/Histogram Plot
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 1, 0)
-logi.hist.plot(independ = Symcap$Depth..m., depend = Symcap$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+Color <- subset(merged, !is.na(newDepth) & !is.na(Color))
+logi.hist.plot(independ = Color$newDepth, depend = Color$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
 mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 
-Dom1 <- subset(Symcap, !is.na(Depth..m.) & !is.na(Dominant))
-logi.hist.plot(Dom1$Depth..m., Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
+Dom1 <- subset(merged, !is.na(newDepth) & !is.na(Dominant))
+logi.hist.plot(Dom1$newDepth, Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
 mtext(side = 4, text = "C                                       D", line = 2, cex = 0.75)
-mtext(side = 2, text = "Probability of clade D Symbiont", line = 3, cex = 1)
+mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
 
 #Export Image
 pdf(file="Mix~Color Morph", height = 4, width = 6)
@@ -183,11 +187,7 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
-
-Oahu <- c(21.468912, -158.000057)
-OahuMap <- GetMap(center = Oahu, zoom = 10, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
-PlotOnStaticMap(OahuMap)
+PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, pch=21, lwd=2)
 
 rownames(XY) <- XY$Reef.ID
 XY <- XY[, -1]
@@ -248,3 +248,5 @@ threshdepth(46)
 threshdepth(18)
 threshdepth("F9-5")
 threshdepth("F8-10")
+
+D <- subset(merged, Mix=="D")
