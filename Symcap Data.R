@@ -139,11 +139,11 @@ lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
-plot(merged$Dominant~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
-results=glm(Dominant~newDepth, family = "binomial", data = merged)
+plot(merged$Mix~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
+results=glm(Mix~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 summary(results)
-fitted <- predict(results, newdata = list(Depth..m.=seq(0,12,0.1)), type = "response")
+fitted <- predict(results, newdata = list(newDepth=seq(0,12,0.1)), type = "response")
 lines(fitted ~ seq(0,12,0.1))
 
 #Logistic Regression/Histogram Plot
@@ -161,15 +161,14 @@ mtext(side = 4, text = "C                                       D", line = 2, ce
 mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="Mix~Color Morph", height = 4, width = 6)
+pdf(file="ColorMorph~ReefArea", height = 4, width = 7)
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$Mix, Symcap$Color.Morph)
-results
+results=table(Symcap$Color.Morph, Symcap$Reef.Area)
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray40", "gray70", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
-legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray40", "gray70", "gray100"), inset = c(-.2, 0), xpd = NA)
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph Proportion")
+legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 dev.off()
 
 #RGoogleMaps
@@ -249,4 +248,4 @@ threshdepth(18)
 threshdepth("F9-5")
 threshdepth("F8-10")
 
-D <- subset(merged, Mix=="D")
+CD <- subset(merged, Mix=="CD")

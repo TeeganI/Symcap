@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "August 31, 2016"
+date: "September 6, 2016"
 output: html_document
 ---
 --------------------------------------------------------------------------------------
@@ -107,7 +107,7 @@ results=table(Symcap$Dom, Symcap$Reef.Area)
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Proportion of Dominant Symbiont")
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Symbmiont Proportion")
 legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
@@ -118,7 +118,7 @@ results=table(Symcap$Dom, Symcap$Color.Morph)
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Proportion of Dominant Symbiont")
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Symbiont Proportion")
 legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
@@ -153,7 +153,7 @@ results=table(Symcap$Color.Morph, Symcap$Reef.Area)
 chisq.test(results)
 prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph")
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph Proportion")
 legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
