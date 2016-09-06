@@ -182,3 +182,9 @@ mtext(side = 4, text = "Frequency", line = 3, cex=1)
 mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 ```
+
+### Dominant Symbiont by Color Morph and Reef Area
+```{r}
+merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
+table(merged$Dom, merged$Color.Morph, merged$Reef.Area)
+```

@@ -101,8 +101,8 @@ merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
 merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 #Chi Squared test for independence
-Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$Mix, Symcap$Color.Morph)
+merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
+results=table(Symcap$Dom, Symcap$Reef.ID)
 results
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -110,7 +110,7 @@ par(mar=c(3, 4, 2, 6))
 barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Proportion of Dominant Symbiont")
 legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 
-Type=table(Symcap$Mix, Symcap$Reef.Type)
+Type=table(Symcap$Dom, Symcap$Reef.ID)
 Type
 chisq.test(Type)
 prop.table(Type, margin = 2)
@@ -139,8 +139,8 @@ lines(fitted ~ seq(0,12,0.1))
 
 #Plot Dominant Symbiont and Depth
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
-plot(merged$Mix~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont")
-results=glm(Mix~newDepth, family = "binomial", data = merged)
+plot(merged$propC~merged$newDepth, xlab="Depth (m)", ylab = "Proportion of Clade C Symbiont")
+results=glm(propC~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 summary(results)
 fitted <- predict(results, newdata = list(newDepth=seq(0,12,0.1)), type = "response")
@@ -221,23 +221,23 @@ apply(XY, MARGIN=1, FUN=function(reef) {
 
 #Plot Dominant Symbiont vs. Depth and find threshold depth of D to C dominance
 threshdepth <- function(reef) {
-  df <- subset(Symcap, Reef.ID==reef)
-  plot(df$Dominant~df$Depth..m., xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont",
+  df <- subset(merged, Reef.ID==reef)
+  plot(df$Dominant~df$newDepth, xlab="Depth (m)", ylab = "Proportion of Dominant Symbiont",
        main=reef)
   abline(h = 0.5, lty=2)
-  results=glm(Dominant~Depth..m., family = "binomial", data = df)
+  results=glm(Dominant~newDepth, family = "binomial", data = df)
   pval <- data.frame(coef(summary(results)))$`Pr...z..`[2]
   mtext(side=3, text=round(pval, 3))
-  newdata <- list(Depth..m.=seq(0,12,0.01))
+  newdata <- list(newDepth=seq(0,12,0.01))
   fitted <- predict(results, newdata = newdata, type = "response")
   lines(fitted ~ seq(0,12,0.01))
   thresh <- ifelse(pval < 0.05,
-                   newdata$Depth..m.[which(diff(sign(fitted - 0.5))!=0)], NA)
+                   newdata$newDepth[which(diff(sign(fitted - 0.5))!=0)], NA)
   return(thresh)
 }
 
-sapply(levels(Symcap$Reef.ID), FUN=threshdepth)
-levels(Symcap$Reef.ID)
+sapply(levels(merged$Reef.ID), FUN=threshdepth)
+levels(merged$Reef.ID)
 
 threshdepth("Deep")
 threshdepth(42)
@@ -249,3 +249,20 @@ threshdepth("F9-5")
 threshdepth("F8-10")
 
 CD <- subset(merged, Mix=="CD")
+
+# 3 Variables 
+merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
+table(merged$Dom, merged$Color.Morph, merged$Bay.Area)
+
+#Patch vs. Fringe
+Patch <- subset(merged, Reef.Type=="Patch")
+Fringe <- subset(merged, Reef.Type=="Fringe")
+
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+results=glm(Color~newDepth, family = "binomial", data = Fringe)
+anova(results, test = "Chisq")
+Color <- subset(Fringe, !is.na(newDepth) & !is.na(Color))
+logi.hist.plot(independ = Color$newDepth, depend = Color$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
+mtext(side = 4, text = "Frequency", line = 3, cex=1)
+mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
+mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
