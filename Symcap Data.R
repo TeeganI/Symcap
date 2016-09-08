@@ -7,6 +7,7 @@ library(popbio)
 library(RgoogleMaps)
 library(plotrix)
 library(zoo)
+library(rgdal)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -69,6 +70,9 @@ Symcap <- Symcap[with(Symcap, order(Colony)), ]
 
 #Identify Symbiont clades present
 Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
+
+#Leeward and Windward to Slope
+Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 
 #Adjust depth by sea level
 JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
@@ -186,7 +190,20 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, Symcap$Latitude, Symcap$Longitude, pch=21, lwd=2)
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, 
+     tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE,
+     labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, 
+     tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE,
+     labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+par(new=T, mar=c(9,17,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.9, 21.41, -157.75, 21.53)
+box()
 
 rownames(XY) <- XY$Reef.ID
 XY <- XY[, -1]
@@ -248,7 +265,7 @@ threshdepth(18)
 threshdepth("F9-5")
 threshdepth("F8-10")
 
-CD <- subset(merged, Mix=="CD")
+D <- subset(merged, Mix=="D")
 
 # 3 Variables 
 merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
@@ -266,3 +283,23 @@ logi.hist.plot(independ = Color$newDepth, depend = Color$Color, type = "hist", b
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
 mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
+
+#2-Way ANOVA - Interactive Effects 
+model=aov(Dominant~Color.Morph*Reef.Area, data = merged)
+anova(model)
+
+model1=lm(Dominant~Color.Morph*newDepth, data = merged)
+anova(model1)
+
+#MANOVA
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+DomCol <- cbind(merged$Dominant, merged$Color)
+fit <- manova(DomCol~merged$Reef.Area)
+manova(fit)
+summary(fit)
+
+merged$newDepth <- as.factor(merged$newDepth)
+fit2 <- manova(DomCol~merged$newDepth)
+manova(fit2)
+summary(fit2)
