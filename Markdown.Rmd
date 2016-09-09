@@ -6,7 +6,7 @@ output: html_document
 ---
 --------------------------------------------------------------------------------------
 ### Project Summary
-This project aimed to look at the spatial variability of Symbiodinium clades C and D in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distribution of symbionts at scales ranging from location in the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch), colony color morph (brown vs. orange) and depth. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of Symbiodinium, we furthered the understanding of stress-response potential in Kane'ohe Bay.
+This project aimed to look at the spatial variability of *Symbiodinium* clades C and D in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distribution of symbionts at scales ranging from location in the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch), colony color morph (brown vs. orange) and depth. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of *Symbiodinium*, we furthered the understanding of stress-response potential in Kane'ohe Bay.
 
 
 ### Library Packages
@@ -99,6 +99,7 @@ XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
+XY <- subset(XY, Reef.ID!="37")
 par(oma=c(3,3,0,0))
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
@@ -197,7 +198,7 @@ mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 
 
 ### Dominant Symbiont by Color Morph and Reef Area
-```{r}
+```{r Reef Area ANOVA}
 merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
 table(merged$Dom, merged$Color.Morph, merged$Reef.Area)
 model=aov(Dominant~Color.Morph*Reef.Area, data = merged)
@@ -205,8 +206,8 @@ anova(model)
 ```
 
 
-### Dominant Symbiont and Color Morph by Depth
-```{r Depth MANOVA}
+### Dominant Symbiont by Color Morph and Depth
+```{r Depth ANOVA}
 model1=lm(Dominant~Color.Morph*newDepth, data = merged)
 anova(model1)
 ```

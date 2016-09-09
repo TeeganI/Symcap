@@ -190,6 +190,7 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
+XY <- subset(XY, Reef.ID!="37")
 par(oma=c(3,3,0,0))
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, 
