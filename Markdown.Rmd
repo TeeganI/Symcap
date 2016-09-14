@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "September 8, 2016"
+date: "September 13, 2016"
 output: html_document
 ---
 --------------------------------------------------------------------------------------
@@ -21,6 +21,8 @@ library(RgoogleMaps)
 library(plotrix)
 library(zoo)
 library(rgdal)
+library(car)
+library(scales)
 ```
 
 
@@ -90,7 +92,7 @@ merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 
 ### Coral Collection Map
-```{r Collection Map, message=FALSE, warning=FALSE, results='hide'}
+```{r Collection Map, message=FALSE, warning=FALSE, results='hide', eval=F}
 KB <- c(21.46087401, -157.809907) 
 KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
@@ -172,28 +174,62 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 
 
 ### Dominant Symbiont by Depth
-```{r Dom~Depth}
-merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+```{r Dom~Depth, message=FALSE, warning=FALSE, results='hide'}
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 Dom1 <- subset(merged, !is.na(newDepth) & !is.na(Dominant))
 results=glm(Dominant~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 logi.hist.plot(Dom1$newDepth, Dom1$Dominant, boxp = FALSE, type = "hist", col="gray", xlabel = "Depth (m)", ylabel = "", ylabel2 = "")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
-mtext(side = 4, text = "C                                       D", line = 2, cex = 0.75)
+mtext(side = 4, text = "C                             D", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
+
+merged$DepthInt <- cut(merged$Depth..m., breaks = 0:13)
+merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
+results=table(merged$Dominant2, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(-.2, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+results=glm(Dominant~Depth..m., family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Dominant Symbiont Proportion")
 ```
 
 
 ### Color Morph by Depth
-```{r ColorMorph~Depth}
+```{r ColorMorph~Depth, message=FALSE, warning=FALSE, results='hide'}
 merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
 results=glm(Color~newDepth, family = "binomial", data = merged)
 anova(results, test = "Chisq")
 Color <- subset(merged, !is.na(newDepth) & !is.na(Color))
 logi.hist.plot(independ = Color$newDepth, depend = Color$Color, type = "hist", boxp = FALSE, ylabel = "", col="gray", ylabel2 = "", xlabel = "Depth (m)")
 mtext(side = 4, text = "Frequency", line = 3, cex=1)
-mtext(side = 4, text = "Brown                                Orange", line = 2, cex = 0.75)
+mtext(side = 4, text = "Brown                       Orange", line = 2, cex = 0.75)
 mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
+
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
+results=table(merged$Color, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(-.22, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
+results=glm(Color2~Depth..m., family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Color Morph Proportion")
 ```
 
 
@@ -202,12 +238,66 @@ mtext(side = 2, text = "Probability of Orange Color Morph", line = 3, cex = 1)
 merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
 table(merged$Dom, merged$Color.Morph, merged$Reef.Area)
 model=aov(Dominant~Color.Morph*Reef.Area, data = merged)
-anova(model)
+Anova(model, type = 2)
 ```
 
 
 ### Dominant Symbiont by Color Morph and Depth
+Because and interactive effect of reef area and color morph was observed and slope is indicative of a depth gradient, the interaction between depth and color morph was tested.
 ```{r Depth ANOVA}
 model1=lm(Dominant~Color.Morph*newDepth, data = merged)
-anova(model1)
+Anova(model1, type = 2)
+```
+
+
+#### Depth at which Orange switches from D to C Dominance
+While brown was always C-dominated, orange was observed to switch from D to C dominance. The depth threshold at which this switch occurs was analyzed here.
+```{r}
+threshdepth <- function(color) {
+  df <- subset(merged, Color.Morph==color)
+  plot(df$Dominant2~df$newDepth, xlab="Depth (m)", ylab = "Probability of Clade C Symbiont",
+       main=color)
+  abline(h = 0.5, lty=2)
+  results=glm(Dominant2~newDepth, family = "binomial", data = df)
+  pval <- data.frame(coef(summary(results)))$`Pr...z..`[2]
+  mtext(side=3, text=pval)
+  newdata <- list(newDepth=seq(0,12,0.01))
+  fitted <- predict(results, newdata = newdata, type = "response")
+  lines(fitted ~ seq(0,12,0.01))
+  thresh <- ifelse(pval < 0.05,
+                   newdata$newDepth[which(diff(sign(fitted - 0.5))!=0)], NA)
+  return(thresh)
+}
+sapply(levels(merged$Color.Morph), FUN=threshdepth)
+
+df <- subset(merged, Color.Morph=="Orange")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="orange", lwd=3)
+abline(h = 0.5, lty=2)
+df <- subset(merged, Color.Morph=="Brown")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0,12,0.01), col="sienna", lwd=3)
+```
+
+
+### Color Morph by Reef Type and Depth
+```{r}
+model2=aov(Color~newDepth*Reef.Type, data = merged)
+Anova(model2, type = 2)
+
+df <- subset(merged, Reef.Type=="Patch")
+results=glm(Color2~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="black", lwd=3)
+abline(h = 0.5, lty=2)
+df <- subset(merged, Reef.Type=="Fringe")
+results=glm(Color2~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0,12,0.01), col="red", lwd=3)
 ```
