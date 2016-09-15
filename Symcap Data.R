@@ -143,10 +143,16 @@ results=glm(Color2~Depth..m., family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3)
 
-Type=table(Symcap$Dom, Symcap$Reef.ID)
+Type=table(merged$Mix, merged$newDepth)
 Type
 chisq.test(Type)
-prop.table(Type, margin = 2)
+
+merged$Mixture <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 1, 0)
+results=glm(Mixture~newDepth, family = "binomial", data = merged)
+anova(results, test = "Chisq")
+
+#D-only colonies
+D <- subset(merged, Mix=="D")
 
 #Mosaic Plot
 mosaicplot(total, ylab = "Reef Area", xlab = "Color Morph", main = "")
@@ -370,6 +376,28 @@ Anova(model3, type=2)
 model1=lm(Dominant~Reef.Type*newDepth, data = merged)
 anova(model1)
 
+merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+model4=aov(Dominant~Depth..m.*Reef.ID, data = merged)
+Anova(model4, type = 2)
+
+model3=aov(Dominant2~Depth..m.*Reef.Type, data = merged)
+Anova(model3, type = 2)
+
+merged$Dominant2 <- ifelse(merged$Dom=="C", 0, 1)
+
+domreef <- function(id) {
+  df <- subset(merged, Reef.ID==id)
+  results=glm(Dominant2~Depth..m., family = "binomial", data = df)
+  newdata <- list(Depth..m.=seq(0,12,0.01))
+  par(mar=c(4, 4, 2, 6))
+  fitted <- predict(results, newdata = newdata, type = "response")
+  plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", 
+       col="dodgerblue3", lwd=3, xlab="", ylab="")
+  mtext(side = 3, text = id)
+}
+
+sapply(levels(merged$Reef.ID), FUN=domreef)
+
 #MANOVA
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
@@ -382,3 +410,87 @@ merged$newDepth <- as.factor(merged$newDepth)
 fit2 <- manova(DomCol~merged$newDepth)
 manova(fit2)
 summary(fit2)
+
+# 3-panel figure
+attach(mtcars)
+par(mfrow=c(3,1))
+merged$DepthInt <- cut(merged$Depth..m., breaks = 0:13)
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
+results=table(merged$Dominant2, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(-.1, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+results=glm(Dominant~Depth..m., family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Dominant Symbiont Proportion")
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
+results=table(merged$Color, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(-0.16, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
+results=glm(Color2~Depth..m., family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Color Morph Proportion")
+df <- subset(merged, Color.Morph=="Orange")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+par(mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+df <- subset(merged, Color.Morph=="Brown")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,12,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0,12,0.01), col="sienna", lwd=3)
+mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
+mtext(side = 2, text = "Probability of Clade C Symbiont", line = 3, cex = 1)
+legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(-.16, 0), xpd = NA)
+
+# Proportion of D 
+propD <- merged$propD[which(merged$propD > 0 & merged$propD < 1.1)]
+hist(propD, xlab = "Proportion of Clade D", ylab = "Number of Samples", main = "", col = "gray75")
+
+# C Mixture by Depth
+C <- subset(merged, Dom=="C")
+C$Mixture <- ifelse(C$Mix=="C", 1, 0)
+C$Mixture2 <- ifelse(C$Mix=="C", 0, 1)
+results=glm(Mixture~newDepth, family = "binomial", data = C)
+anova(results, test = "Chisq")
+results=table(C$Mixture2, C$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("CD", "C"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(-.23, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+results=glm(Mixture~Depth..m., family = "binomial", data = C)
+fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Mixture Proportion")
+
+results=table(merged$Dominant, merged$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Symbiont Proportion")
+legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
