@@ -10,6 +10,9 @@ library(zoo)
 library(rgdal)
 library(car)
 library(scales)
+library(png)
+library(pixmap)
+library(ecodist)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -79,7 +82,8 @@ Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 #Adjust depth by sea level
 JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
 JulyTide=read.csv("Station_1612480_tide_ht_20160701-20160731.csv")
-Tide<-rbind(JuneTide, JulyTide)
+AugustTide=read.csv("Station_1612480_tide_ht_20160801-20160812.csv")
+Tide<-rbind(JuneTide, JulyTide, AugustTide)
 Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
 attributes(Tide$Time)$tzone <- "Pacific/Honolulu"
 plot(Tide$Time, Tide$TideHT, type = "l", xlab = "Date", ylab = "Tide Height, meters")
@@ -88,6 +92,21 @@ with(Tide[Tide$Time > "2016-06-07 00:00:00" & Tide$Time < "2016-06-09 00:00:00",
 Symcap$Time2 <- as.POSIXct(paste(as.character(Symcap$Date), as.character(Symcap$Time)),
                                 format="%m/%d/%y %H:%M", tz="Pacific/Honolulu")
 Symcap$Time=Symcap$Time2
+
+# Add estimated times for missing values
+which(is.na(Symcap$Time))
+Symcap$Time[170] <- as.POSIXct("2016-06-14 12:07:00")
+Symcap$Time[177] <- as.POSIXct("2016-06-14 12:20:00")
+Symcap$Time[178] <- as.POSIXct("2016-06-14 12:22:00")
+Symcap$Time[180] <- as.POSIXct("2016-06-14 13:08:00")
+Symcap$Time[187] <- as.POSIXct("2016-06-14 12:42:00")
+Symcap$Time[188] <- as.POSIXct("2016-06-14 12:44:00")
+Symcap$Time[206] <- as.POSIXct("2016-06-16 13:10:00")
+Symcap$Time[208] <- as.POSIXct("2016-06-16 13:24:00")
+Symcap$Time[211] <- as.POSIXct("2016-06-16 12:37:00")
+Symcap$Time[218] <- as.POSIXct("2016-06-16 12:27:00")
+Symcap$Time[448] <- as.POSIXct("2016-07-16 13:32:00")
+
 Round6 <- function (times)  {
   x <- as.POSIXlt(times)
   mins <- x$min
@@ -101,6 +120,7 @@ Round6 <- function (times)  {
   x <- as.POSIXct(x)
   x
 }
+
 Symcap$Time.r <- Round6(Symcap$Time)
 Tide$Time.r <- Tide$Time
 merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
@@ -223,7 +243,6 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
-XY <- subset(XY, Reef.ID!="37")
 par(oma=c(3,3,0,0))
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, 
@@ -231,7 +250,8 @@ axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX,
      labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
 axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, 
      tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE,
-     labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+     labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, 
+     cex.axis = 0.75)
 par(new=T, mar=c(9,17,0,0))
 HI <- readOGR("coast_n83.shp", "coast_n83") 
 HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
@@ -244,7 +264,7 @@ XY <- XY[, -1]
 XY <- na.omit(XY)
 apply(XY, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["C"]), radius = 5, col = c("#7FFFD4"))
+               x=c(reef["Orange"], reef["Brown"]), radius = 10, col = c("#7FFFD4"))
 })
 
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
@@ -268,6 +288,30 @@ XY <- na.omit(XY)
 apply(XY, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
                x=c(reef["C"], reef["CD"], reef["DC"], reef["D"]), radius = 7, col = c("#0571b0","#92c5de","#f4a582","#ca0020"))
+})
+
+#Plot Color Morph Proportions per Reef
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
+propCol=prop.table(propCol, margin = 2)
+propCol <- as.data.frame.matrix(propCol)
+props <- data.frame(t(propCol))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+
+rownames(XY) <- XY$Reef.ID
+XY <- XY[, -1]
+XY <- na.omit(XY)
+apply(XY, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Orange"], reef["Brown"]), radius = 7, col = c("orange","sienna"))
 })
 
 #Plot Dominant Symbiont vs. Depth and find threshold depth of D to C dominance
@@ -383,6 +427,7 @@ Anova(model4, type = 2)
 model3=aov(Dominant2~Depth..m.*Reef.Type, data = merged)
 Anova(model3, type = 2)
 
+#Dominant Symbiont per Depth and Reef ID
 merged$Dominant2 <- ifelse(merged$Dom=="C", 0, 1)
 
 domreef <- function(id) {
@@ -394,6 +439,8 @@ domreef <- function(id) {
   plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", 
        col="dodgerblue3", lwd=3, xlab="", ylab="")
   mtext(side = 3, text = id)
+  mtext(side = 2, text = "Probability of Clade D Symbiont", line = 3, cex = 1)
+  mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
 }
 
 sapply(levels(merged$Reef.ID), FUN=domreef)
@@ -494,3 +541,157 @@ prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6))
 barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Symbiont Proportion")
 legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+
+# Dominant Symbiont per Color Morph by Depth and Reef Type
+df <- subset(merged, Reef.Type=="Patch")
+dfo <- subset(df, Color.Morph=="Orange")
+results=glm(Dominant~Depth..m., family = "binomial", data = dfo)
+newdata <- list(Depth..m.=seq(0,12,0.01))
+par(mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="dodgerblue3", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+
+df <- subset(merged, Reef.Type=="Patch")
+dfb <- subset(df, Color.Morph=="Brown")
+results=glm(Dominant~Depth..m., family = "binomial", data = dfb)
+newdata <- list(Depth..m.=seq(0,12,0.01))
+par(new = T, mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="black", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+
+df <- subset(merged, Reef.Type=="Fringe")
+dfo <- subset(df, Color.Morph=="Orange")
+results=glm(Dominant~Depth..m., family = "binomial", data = dfo)
+newdata <- list(Depth..m.=seq(0,12,0.01))
+par(new = T, mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="red", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+
+df <- subset(merged, Reef.Type=="Fringe")
+dfb <- subset(df, Color.Morph=="Brown")
+results=glm(Dominant~Depth..m., family = "binomial", data = dfb)
+newdata <- list(Depth..m.=seq(0,12,0.01))
+par(new = T, mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,12,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+legend("topright", legend=c("PO", "PB", "FO", "FB"), fill=c("dodgerblue3", "black", "red", "orange"), inset = c(-.2, 0), xpd = NA)
+
+#Interaction of Color and Symbiont at Depth
+merged$DomCol <- interaction(merged$Dom, merged$Color.Morph)
+merged$DomCol <- factor(merged$DomCol, levels=rev(levels(merged$DomCol)))
+results=table(merged$DomCol, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("OD", "OC", "BD", "BC"), fill=c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
+
+merged$DomCol2 <- interaction(merged$Color.Morph, merged$Dom)
+merged$DomCol2 <- factor(merged$DomCol2, levels=rev(levels(merged$DomCol2)))
+results=table(merged$DomCol2, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("OD", "BD", "OC", "BC"), fill=c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
+
+merged$Mixture <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 1, 0)
+model4=aov(Mixture~newDepth*Bay.Area, data = merged)
+Anova(model4, type = 2)
+
+results=table(Symcap$Dom, Symcap$Reef.ID)
+chisq.test(results)
+prop.table(results, margin = 2)
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propDom=table(Symcap$Dom, Symcap$Reef.ID)
+propDom=prop.table(propDom, margin = 2)
+propDom <- as.data.frame.matrix(propDom)
+props <- data.frame(t(propDom))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY) <- XY$Reef.ID
+XY <- XY[, -1]
+XY <- na.omit(XY)
+apply(XY, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["C"], reef["D"]), radius = 7, col = c("blue", "red"))
+})
+
+#Prop D Histogram
+merged$propDHist <- cut(merged$propD, breaks = 10)
+DCol=table(merged$Color.Morph, merged$propDHist)
+barplot(DCol)
+
+propD <- merged$propD[which(merged$propD > 0 & merged$propD < 1)]
+hist(propD, xlab = "Proportion of Clade D", ylab = "Number of Samples", 
+     main = "", col = "ghostwhite")
+
+par(mfrow=c(2,1))
+propDHist <- subset(merged, propD > 0 & propD < 1)
+propDHist$propD <- cut(propDHist$propD, breaks = 10)
+DCol=table(propDHist$Color.Morph, propDHist$propD)
+par(mar=c(2, 4, 2, 6))
+barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
+        main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), 
+        axisnames = FALSE, space = 0)
+
+img <- readPNG("brown_orange.png")
+img2 <- pixmapRGB(img)
+plot(img2)
+
+#Mantel Test for Dominant Symbiont
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propDom=table(Symcap$Dom, Symcap$Reef.ID)
+propDom=prop.table(propDom, margin = 2)
+propDom <- as.data.frame.matrix(propDom)
+props <- data.frame(t(propDom))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
+dom.dists <- dist(XY$C)
+mantel(dom.dists~reef.dists)
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
+propCol=prop.table(propCol, margin = 2)
+propCol <- as.data.frame.matrix(propCol)
+props <- data.frame(t(propCol))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
+col.dists <- dist(XY$Brown)
+mantel(col.dists~reef.dists)
