@@ -15,7 +15,6 @@ library(pixmap)
 library(ecodist)
 library(cluster)
 library(fpc)
-library(NbClust)
 library(clustsig)
 
 #import collection data
