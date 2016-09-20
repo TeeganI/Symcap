@@ -13,6 +13,10 @@ library(scales)
 library(png)
 library(pixmap)
 library(ecodist)
+library(cluster)
+library(fpc)
+library(NbClust)
+library(clustsig)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -627,7 +631,7 @@ XY<-merge(XY, props, by="Reef.ID", all=T)
 newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
 XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+PlotOnStaticMap(KBMap, df$Latitude, df$Longitude)
 
 rownames(XY) <- XY$Reef.ID
 XY <- XY[, -1]
@@ -660,8 +664,6 @@ img2 <- pixmapRGB(img)
 plot(img2)
 
 #Mantel Test for Dominant Symbiont
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -671,12 +673,30 @@ propDom <- as.data.frame.matrix(propDom)
 props <- data.frame(t(propDom))
 props$Reef.ID <- rownames(props)
 XY<-merge(XY, props, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
 reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
 dom.dists <- dist(XY$C)
 mantel(dom.dists~reef.dists)
+
+doms <- hclust(dom.dist)
+plot(doms)
+simprof(dom.dists)
+
+a <- hclust(reef.dists*dom.dists)
+plot(a, labels = XY$Reef.ID)
+
+domsk <- pamk(data = dom.dists)
+domsk
+domsk$pamobject$clustering
+
+df <- cbind(XY, km$cluster)
+km$cluster
+
+km <- kmeans(dom.dists, centers = 3)
+km
+
+NbClust(data = dom.dists, distance = "euclidean", method = "complete")
+
+PlotOnStaticMap(KBMap, df$Latitude, df$Longitude, col="red", pch=as.character(km$cluster), lwd = 2)
 
 KB <- c(21.46087401, -157.809907) 
 KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)

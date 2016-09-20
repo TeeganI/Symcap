@@ -260,10 +260,9 @@ propCol <- as.data.frame.matrix(propCol)
 props <- data.frame(t(propCol))
 props$Reef.ID <- rownames(props)
 XY<-merge(XY, props, by="Reef.ID", all=T)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-reef.dists <- ecodist::distance(cbind(XY$Longitude, XY$Latitude), "euclidean")
+reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
 col.dists <- dist(XY$Brown)
+set.seed(12456)
 mantel(col.dists~reef.dists)
 ```
 
@@ -326,13 +325,27 @@ propDom <- as.data.frame.matrix(propDom)
 props <- data.frame(t(propDom))
 props$Reef.ID <- rownames(props)
 XY<-merge(XY, props, by="Reef.ID", all=T)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
 reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
 dom.dists <- dist(XY$C)
+set.seed(12456)
 mantel(dom.dists~reef.dists)
 ```
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
+
+##### Clustering of Similar Reefs
+```{r}
+doms <- hclust(dom.dists)
+plot(doms, labels = XY$Reef.ID)
+
+a <- hclust(reef.dists*dom.dists)
+plot(a, labels = XY$Reef.ID)
+
+domsk <- pamk(data = dom.dists, critout = TRUE)
+domsk
+
+kmeans <- kmeans(dom.dists, centers = 10)
+kmeans
+```
 
 
 #### Color Morph by Reef Type
