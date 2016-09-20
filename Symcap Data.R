@@ -431,6 +431,24 @@ Anova(model4, type = 2)
 model3=aov(Dominant2~Depth..m.*Reef.Type, data = merged)
 Anova(model3, type = 2)
 
+
+# Prevalence of C vs. D dominance, adjusted for depth.
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T)
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw", "d.adj", "d.adj.int")
+
+PlotOnStaticMap(KBMap)
+XY$Reef.ID <- rownames(XY)
+head(XY)
+XY2 <- merge(XY, res)
+head(XY2)
+
+
 #Dominant Symbiont per Depth and Reef ID
 merged$Dominant2 <- ifelse(merged$Dom=="C", 0, 1)
 
