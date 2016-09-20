@@ -11,11 +11,11 @@ output:
     code_folding: hide
 ---
 --------------------------------------------------------------------------------------
-### Project Summary
+# Project Summary
 This project aimed to look at the spatial variability of *Symbiodinium* clades C and D in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distribution of symbionts at scales ranging from location in the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch), colony color morph (brown vs. orange) and depth. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of *Symbiodinium*, we furthered the understanding of stress-response potential in Kane'ohe Bay.
 
 
-### Library Packages
+# Library Packages
 ```{r Library Packages Needed, warning=FALSE, message=FALSE}
 setwd("~/Symcap")
 library(data.table)
@@ -32,10 +32,14 @@ library(scales)
 library(png)
 library(pixmap)
 library(ecodist)
+library(cluster)
+library(fpc)
+library(clustsig)
+library(lsmeans)
 ```
 
 
-### Import/Merge Field and qPCR Data
+# Import/Merge Field and qPCR Data
 ```{r Import Data, warning=FALSE, message=FALSE}
 Coral_Data <- read.csv("Coral_Collection.csv")
 Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
@@ -70,7 +74,7 @@ Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 ```
 
 
-### Adjust Depth by Mean Sea Level
+# Adjust Depth by Mean Sea Level
 To account for the influence of tides, depth was adjusted according to the difference in sea level from the mean sea level on each collection day at 6-minute intervals. Mean sea level was obtained from NOAA tide tables for Moku o Lo'e.
 ```{r Adjust Depth, warning=FALSE, message=FALSE, results='hide'}
 JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
@@ -188,14 +192,11 @@ propDHist$propD <- cut(propDHist$propD, breaks = 5)
 DCol=table(propDHist$Color.Morph, propDHist$propD)
 z <- with(subset(merged, propD==0), table(Color.Morph))
 o <- with(subset(merged, propD==1), table(Color.Morph))
-par(mar=c(2, 4, 2, 2))
+DCol <- cbind(z, DCol, o)
+par(mar=c(2, 4, 2, 0))
 bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
         main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), 
-        axisnames = FALSE, space = c(0,0.1,0,0,0,0,0.1))
-lbars <- barplot(log(DCol), xlab = "Clade D Proportion", ylab = "Number of Samples", 
-        main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), 
-        axisnames = FALSE, space = c(0,0.1,0,0,0,0,0,0,0,0,0,0.1))
-lbars
+        axisnames = FALSE, space = c(0,0.5,0,0,0,0,0.5))
 
 par(new = T, mar = c(8, 5, 1, 15))
 img <- readPNG("brown_orange.png")
@@ -267,22 +268,22 @@ mantel(col.dists~reef.dists)
 ```
 
 
-## Non-Significant Differences
-#### Dominant Symbiont by Reef Type
+# Non-Significant Differences
+## Dominant Symbiont by Reef Type
 ``` {r Dom~ReefType, echo=FALSE}
 results=table(Symcap$Dom, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-#### Dominant Symbiont by Bay Area
+## Dominant Symbiont by Bay Area
 ```{r Dom~BayArea, echo=FALSE}
 results=table(Symcap$Dom, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-#### Dominant Symbiont by Reef ID
+## Dominant Symbiont by Reef ID
 ```{r Dom~ReefID, warning=FALSE, results='hide'}
 results=table(Symcap$Dom, Symcap$Reef.ID)
 chisq.test(results)
@@ -314,7 +315,7 @@ apply(XY, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-##### Mantel Test for Spatial Autocorrelation
+### Mantel Test for Spatial Autocorrelation
 ```{r}
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
@@ -332,8 +333,8 @@ mantel(dom.dists~reef.dists)
 ```
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
 
-##### Clustering of Similar Reefs
-```{r}
+### Clustering of Similar Reefs
+```{r, eval=FALSE}
 doms <- hclust(dom.dists)
 plot(doms, labels = XY$Reef.ID)
 
@@ -343,40 +344,138 @@ plot(a, labels = XY$Reef.ID)
 domsk <- pamk(data = dom.dists, critout = TRUE)
 domsk
 
-kmeans <- kmeans(dom.dists, centers = 10)
-kmeans
+km <- kmeans(dom.dists, centers = 5)
+km
+df <- cbind(XY, km$cluster)
+km$cluster
+
+PlotOnStaticMap(KBMap, df$Latitude, df$Longitude, col="red", pch=as.character(km$cluster), lwd = 2)
+```
+
+### Dominant Symbiont Plots
+#### Raw Values
+```{r Raw Values}
+merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY2) <- XY2$Reef.ID
+XY2 <- XY2[, -1]
+XY2 <- na.omit(XY2)
+apply(XY2, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["raw"], reef["raw.d"]), radius = 7, 
+               col = c("blue", "red"))
+})
+```
+
+#### Depth Adjustment
+```{r Adjusted for Depth}
+merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY2) <- XY2$Reef.ID
+XY2 <- XY2[, -1]
+XY2 <- na.omit(XY2)
+apply(XY2, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["c.adj"], reef["d.adj"]), radius = 7, 
+               col = c("blue", "red"))
+})
+```
+
+#### Depth Interaction Adjustment
+```{r Adjusted for Depth Interaction}
+merged$Dominant <- ifelse(merged$Dom=="C", 1, 0)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY2) <- XY2$Reef.ID
+XY2 <- XY2[, -1]
+XY2 <- na.omit(XY2)
+apply(XY2, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["c.adj.int"], reef["d.adj.int"]), radius = 7, 
+               col = c("blue", "red"))
+})
 ```
 
 
-#### Color Morph by Reef Type
+## Color Morph by Reef Type
 ```{r Color~ReefType, echo=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-#### Color Morph by Bay Area
+## Color Morph by Bay Area
 ```{r Color~BayArea, echo=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-#### Symbiont Community Composition by Reef Type
+## Symbiont Community Composition by Reef Type
 ```{r Mix~ReefType, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-#### Symbiont Community Composition by Bay Area
+## Symbiont Community Composition by Bay Area
 ```{r Mix~BayArea, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-#### Symbiont Community Composition by Reef ID
+## Symbiont Community Composition by Reef ID
 ```{r Mix~ReefID, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.ID)
 chisq.test(results)
@@ -513,7 +612,6 @@ threshdepth <- function(color) {
 }
 sapply(levels(merged$Color.Morph), FUN=threshdepth)
 ```
-
 
 ```{r, warning=FALSE}
 df <- subset(merged, Color.Morph=="Orange")
