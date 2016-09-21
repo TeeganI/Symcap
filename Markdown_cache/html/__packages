@@ -19,3 +19,10 @@ fpc
 clustsig
 estimability
 lsmeans
+foreign
+nnet
+ggplot2
+Formula
+miscTools
+maxLik
+mlogit

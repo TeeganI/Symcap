@@ -1,5 +1,6 @@
 setwd("~/Symcap")
 library(data.table)
+library(lsmeans)
 library(devtools)
 library(plyr)
 library(reshape2)
@@ -16,6 +17,10 @@ library(ecodist)
 library(cluster)
 library(fpc)
 library(clustsig)
+library(foreign)
+library(nnet)
+library(ggplot2)
+library(mlogit)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -290,7 +295,8 @@ XY <- XY[, -1]
 XY <- na.omit(XY)
 apply(XY, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["C"], reef["CD"], reef["DC"], reef["D"]), radius = 7, col = c("#0571b0","#92c5de","#f4a582","#ca0020"))
+               x=c(reef["C"], reef["CD"], reef["DC"], reef["D"]), 
+               radius = 7, col = c("#0571b0","#92c5de","#f4a582","#ca0020"))
 })
 
 #Plot Color Morph Proportions per Reef
@@ -429,37 +435,6 @@ Anova(model4, type = 2)
 
 model3=aov(Dominant2~Depth..m.*Reef.Type, data = merged)
 Anova(model3, type = 2)
-
-
-# Prevalence of C vs. D dominance, adjusted for depth.
-dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw", "c.adj", "c.adj.int")
-
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw
-
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-
-rownames(XY2) <- XY2$Reef.ID
-XY2 <- XY2[, -1]
-XY2 <- na.omit(XY2)
-apply(XY2, MARGIN=1, FUN=function(reef) {
-  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["c.adj"], reef["d.adj"]), radius = 7, 
-               col = c("blue", "red"))
-})
-
 
 #Dominant Symbiont per Depth and Reef ID
 merged$Dominant2 <- ifelse(merged$Dom=="C", 0, 1)
@@ -693,6 +668,13 @@ img <- readPNG("brown_orange.png")
 img2 <- pixmapRGB(img)
 plot(img2)
 
+#Mantel Test for Symbiont and Color
+manteltable = table(merged$Dom, merged$Color.Morph, merged$Reef.ID)
+nc <- aggregate(interaction(merged$Color.Morph, merged$Dom), by=list(merged$Reef.ID), FUN=table)
+nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
+nc
+XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
+
 #Mantel Test for Dominant Symbiont
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
@@ -703,26 +685,147 @@ propDom <- as.data.frame.matrix(propDom)
 props <- data.frame(t(propDom))
 props$Reef.ID <- rownames(props)
 XY<-merge(XY, props, by="Reef.ID", all=T)
-reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
-dom.dists <- dist(XY$C)
+
+reef.dists <- dist(cbind(XY3$Longitude, XY3$Latitude))
+dom.dists <- dist(cbind(XY3$Brown.C, XY3$Brown.D, XY3$Orange.C, XY3$Orange.D),
+                  method="manhattan")
+set.seed(12456)
 mantel(dom.dists~reef.dists)
 
-doms <- hclust(dom.dist)
-plot(doms)
-simprof(dom.dists)
-
-a <- hclust(reef.dists*dom.dists)
-plot(a, labels = XY$Reef.ID)
+rownames(XY3) <- XY3$Reef.ID
+XY3 <- XY3[, -1]
+XY3 <- na.omit(XY3)
+apply(XY3, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C"], reef["Brown.D"], reef["Orance.C"], reef["Orange.D"]), radius = 7, 
+               col = c("blue", "purple", "green", "red"))
+})
 
 domsk <- pamk(data = dom.dists)
 domsk
-domsk$pamobject$clustering
+
+km <- kmeans(dom.dists, centers = 6)
+km
 
 df <- cbind(XY, km$cluster)
 km$cluster
 
-km <- kmeans(dom.dists, centers = 3)
-km
-
-PlotOnStaticMap(KBMap, df$Latitude, df$Longitude, col="red", 
+PlotOnStaticMap(KBMap, XY2$Latitude, XY2$Longitude, col="red", 
                 pch=as.character(km$cluster), lwd = 2)
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+XY <- subset(XY, Reef.ID!="37")
+
+# Prevalence of C vs. D dominance, adjusted for depth.
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+dat <- aggregate(data.frame(prop=merged$Dominant),
+                 by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw.c
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY2) <- XY2$Reef.ID
+XY2 <- XY2[, -1]
+XY2 <- na.omit(XY2)
+apply(XY2, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["c.adj"], reef["d.adj"]), radius = 7, 
+               col = c("blue", "red"))
+})
+
+# Symbiont and Color Adjusted for Depth
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), 
+                 FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw.c
+
+manteltable = table(merged$Dom, merged$Color.Morph, merged$Reef.ID)
+nc <- aggregate(interaction(merged$Color.Morph, merged$Dom), 
+                by=list(merged$Reef.ID), FUN=table)
+nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
+XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
+
+merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
+model <- multinom(ColDom~newDepth+Reef.ID, merged)
+means <- lsmeans(model, specs = "Reef.ID")
+means
+pp <- fitted(model)
+
+newdat <- data.frame(Reef.ID = levels(merged$Reef.ID),
+                   newDepth = mean(merged$newDepth, na.rm=T))
+pred <- predict(model, newdata = newdat, "probs")
+new <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
+XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+
+reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
+dom.dists <- bcdist(cbind(XY4$Brown.C.y, XY4$Orange.C.y, XY4$Brown.D.y, XY4$Orange.D.y))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
+
+XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+XY4[XY4 == 0.000] <- 0.0000000001
+rownames(XY4) <- XY4$Reef.ID
+XY4 <- XY4[, -1]
+XY4 <- na.omit(XY4)
+apply(XY4, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C.x"], reef["Orange.C.x"], reef["Brown.D.x"], 
+                   reef["Orange.D.x"]), radius = 7, 
+               col = c("blue", "purple", "green", "red"))
+})
+legend("topright", legend=c("BC", "OC", "BD", "OD"), fill = c("blue", "purple", "green", "red"))
+
+
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
+
+XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+XY4[XY4 == 0.000] <- 0.0000000001
+rownames(XY4) <- XY4$Reef.ID
+XY4 <- XY4[, -1]
+XY4 <- na.omit(XY4)
+apply(XY4, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
+                   reef["Orange.D.y"]), radius = 7, 
+               col = c("blue", "purple", "green", "red"))
+})
+legend("topright", legend=c("BC", "OC", "BD", "OD"), fill = c("blue", "purple", "green", "red"))
