@@ -171,9 +171,14 @@ results=glm(Color2~Depth..m., family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(Depth..m.=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3)
 
-Type=table(merged$Mix, merged$newDepth)
+Type=table(merged$ColDom, merged$Bay.Area)
 Type
 chisq.test(Type)
+
+reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
+dom.dists <- bcdist(cbind(XY4$Brown.C.x, XY4$Orange.C.x, XY4$Brown.D.x, XY4$Orange.D.x))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
 
 merged$Mixture <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 1, 0)
 results=glm(Mixture~newDepth, family = "binomial", data = merged)
@@ -829,3 +834,33 @@ apply(XY4, MARGIN=1, FUN=function(reef) {
                col = c("blue", "purple", "green", "red"))
 })
 legend("topright", legend=c("BC", "OC", "BD", "OD"), fill = c("blue", "purple", "green", "red"))
+
+
+# plot color morph and symbiont bars
+merged$DomCol <- interaction(merged$Dom, merged$Color.Morph)
+merged$DomCol <- factor(merged$DomCol, levels=rev(levels(merged$DomCol)))
+results=table(merged$DomCol, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("OD", "OC", "BD", "BC"), fill=c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
+par(new=T, mar=c(4.2, 4, 2, 6))
+box()
+
+merged$DomCol2 <- interaction(merged$Color.Morph, merged$Dom)
+merged$DomCol2 <- factor(merged$DomCol2, levels=rev(levels(merged$DomCol2)))
+results=table(merged$DomCol2, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("OD", "BD", "OC", "BC"), fill=c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
+par(new=T, mar=c(4.2, 4, 2, 6))
+box()

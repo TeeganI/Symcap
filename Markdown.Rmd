@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "September 20, 2016"
+date: "September 21, 2016"
 output: 
   html_document:
     toc: yes
@@ -125,6 +125,30 @@ merged$newDepth <- merged$Depth..m.- merged$TideHT
 ```
 
 
+# Coral Collection Map
+```{r Collection Map, message=FALSE, warning=FALSE, results='hide'}
+KB <- c(21.46087401, -157.809907) 
+KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+XY <- subset(XY, Reef.ID!="37")
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+par(new=T, mar=c(11.8,19,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.9, 21.41, -157.75, 21.53)
+box()
+```
+
+
 # Chi-Squared
 ## Significant Differences
 ### Dominant Symbiont by Reef Area
@@ -187,7 +211,7 @@ When looking at D-only colonies, the Ct values are on the higher end of the spec
 
 
 #### Proportion of D When Present in Mixture
-```{r propD Histogram, warning=FALSE, cache=TRUE}
+```{r propD Histogram, warning=FALSE, cache=TRUE, fig.width=5}
 propD <- merged$propD[which(merged$propD > 0 & merged$propD < 1)]
 hist(propD, xlab = "Proportion of Clade D", ylab = "Number of Samples", main = "", col = "gray75")
 
@@ -201,11 +225,8 @@ par(mar=c(2, 4, 2, 0))
 bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
         main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), 
         axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
-
-par(new = T, mar = c(8, 5, 1, 15))
-#img <- readPNG("brown_orange.png")
-#img2 <- pixmapRGB(img)
-#plot(img2)
+axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4, 0.6, 0.8, "<1.0"))
+axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 ```
 
 
@@ -229,8 +250,6 @@ prop.table(results, margin = 2)
 ```
 
 ```{r, warning=FALSE, results='hide'}
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -272,22 +291,22 @@ mantel(col.dists~reef.dists)
 ```
 
 
-# Non-Significant Differences
-## Dominant Symbiont by Reef Type
+## Non-Significant Differences
+### Dominant Symbiont by Reef Type
 ``` {r Dom~ReefType, echo=FALSE}
 results=table(Symcap$Dom, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-## Dominant Symbiont by Bay Area
+### Dominant Symbiont by Bay Area
 ```{r Dom~BayArea, echo=FALSE}
 results=table(Symcap$Dom, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-## Dominant Symbiont by Reef ID
+### Dominant Symbiont by Reef ID
 ```{r Dom~ReefID, warning=FALSE, results='hide'}
 results=table(Symcap$Dom, Symcap$Reef.ID)
 chisq.test(results)
@@ -319,7 +338,7 @@ apply(XY, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-### Mantel Test for Spatial Autocorrelation
+#### Mantel Test for Spatial Autocorrelation
 ```{r}
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
@@ -337,7 +356,7 @@ mantel(dom.dists~reef.dists)
 ```
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
 
-### Clustering of Similar Reefs
+#### Clustering of Similar Reefs
 ```{r, eval=FALSE}
 doms <- hclust(dom.dists)
 plot(doms, labels = XY$Reef.ID)
@@ -356,11 +375,9 @@ km$cluster
 PlotOnStaticMap(KBMap, df$Latitude, df$Longitude, col="red", pch=as.character(km$cluster), lwd = 2)
 ```
 
-### Dominant Symbiont Plots
-#### Raw Values
+#### Dominant Symbiont Plots
+##### Raw Values
 ```{r Raw Values, message=FALSE, results='hide'}
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -385,8 +402,6 @@ XY2$d.adj <- 1-XY2$c.adj
 XY2$d.adj.int <- 1-XY2$c.adj.int
 XY2$raw.d <- 1-XY2$raw.c
 
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
 
 rownames(XY2) <- XY2$Reef.ID
@@ -399,7 +414,7 @@ apply(XY2, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-#### Depth Adjustment
+##### Depth Adjustment
 ```{r Adjusted for Depth, message=FALSE, results='hide'}
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
@@ -417,8 +432,6 @@ XY2$d.adj <- 1-XY2$c.adj
 XY2$d.adj.int <- 1-XY2$c.adj.int
 XY2$raw.d <- 1-XY2$raw.c
 
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
 
 rownames(XY2) <- XY2$Reef.ID
@@ -431,7 +444,7 @@ apply(XY2, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-#### Depth Interaction Adjustment
+##### Depth Interaction Adjustment
 ```{r Adjusted for Depth Interaction, message=FALSE, results='hide'}
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
@@ -449,8 +462,6 @@ XY2$d.adj <- 1-XY2$c.adj
 XY2$d.adj.int <- 1-XY2$c.adj.int
 XY2$raw.d <- 1-XY2$raw.c
 
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
 
 rownames(XY2) <- XY2$Reef.ID
@@ -463,7 +474,8 @@ apply(XY2, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-#### Depth Adjustment for Color Morph and Dominant Symbiont
+##### Depth Adjustment for Color Morph and Dominant Symbiont
+A multinomial logistic regression was performed on the interaction of color morph and dominant symbiont to discount the influence of depth on spatial distribution. 
 ```{r, message=FALSE, results='hide'}
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), 
@@ -500,13 +512,6 @@ pred <- predict(model, newdata = newdat, "probs")
 new <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
 XY4 <- merge(XY3, new, by="Reef.ID", all=T)
 
-reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
-dom.dists <- bcdist(cbind(XY4$Brown.C.y, XY4$Orange.C.y, XY4$Brown.D.y, XY4$Orange.D.y))
-set.seed(12456)
-mantel(dom.dists~reef.dists)
-
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 
 XY4 <- merge(XY3, new, by="Reef.ID", all=T)
@@ -518,13 +523,21 @@ apply(XY4, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
                x=c(reef["Brown.C.x"], reef["Orange.C.x"], reef["Brown.D.x"], 
                    reef["Orange.D.x"]), radius = 7, 
-               col = c("blue", "purple", "green", "red"))
+   col = c("turquoise4", "steelblue1", "tomato", "coral"))
 })
-legend("topright", legend=c("BC", "OC", "BD", "OD"), fill = c("blue", "purple", "green", "red"))
 
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
 
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+par(new=T, mar=c(15,22,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.9, 21.41, -157.75, 21.53)
+box()
+```
+Raw proportion values for Color Morph and Dominant Symbiont at each reef not discounting the effect of depth.
+
+```{r, results='hide'}
 PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 
 XY4 <- merge(XY3, new, by="Reef.ID", all=T)
@@ -536,42 +549,67 @@ apply(XY4, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
                x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
                    reef["Orange.D.y"]), radius = 7, 
-               col = c("blue", "purple", "green", "red"))
+               col = c("turquoise4", "steelblue1", "tomato", "coral"))
 })
-legend("topright", legend=c("BC", "OC", "BD", "OD"), fill = c("blue", "purple", "green", "red"))
 
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
+
+par(new=T, mar=c(15,22,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.9, 21.41, -157.75, 21.53)
+box()
+```
+Adjusted values of Dominant Symbiont and Color Morph adjusted for the influence of depth.
+
+##### Mantel Test for Spatial Autocorrelation
+```{r}
+reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
+dom.dists <- bcdist(cbind(XY4$Brown.C.y, XY4$Orange.C.y, XY4$Brown.D.y, XY4$Orange.D.y))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
 ```
 
 
-## Color Morph by Reef Type
+##### Color and Dominant Symbiont by Bay Area
+When considering the effect of bay area on the interaction of color morph and dominant symbiont, the proportion of Brown colonies dominated by D increases as you move from the north to the south of the bay. The proportion increases almost 4x, yet the small number of colonies makes this non-compelling. 
+```{r, ColDom~BayArea}
+Type=table(merged$ColDom, merged$Bay.Area)
+prop.table(Type)
+chisq.test(Type)
+```
+
+
+### Color Morph by Reef Type
 ```{r Color~ReefType, echo=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-## Color Morph by Bay Area
+### Color Morph by Bay Area
 ```{r Color~BayArea, echo=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-## Symbiont Community Composition by Reef Type
+### Symbiont Community Composition by Reef Type
 ```{r Mix~ReefType, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-## Symbiont Community Composition by Bay Area
+### Symbiont Community Composition by Bay Area
 ```{r Mix~BayArea, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-## Symbiont Community Composition by Reef ID
+### Symbiont Community Composition by Reef ID
 ```{r Mix~ReefID, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.ID)
 chisq.test(results)
@@ -875,30 +913,6 @@ On the y-axis, a value of 1 indicates a mixture and a value of 0 indicates singl
 
 
 # Figures
-## Coral Collection Map
-```{r Collection Map, message=FALSE, warning=FALSE, results='hide'}
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-XY <- subset(XY, Reef.ID!="37")
-par(oma=c(3,3,0,0))
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2)
-axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
-axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
-par(new=T, mar=c(11.8,19,0,0))
-HI <- readOGR("coast_n83.shp", "coast_n83") 
-HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
-plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
-rect(-157.9, 21.41, -157.75, 21.53)
-box()
-```
-
-
 ## Depth Influence on Dominant Symbiont and Color Morph
 ```{r 3-panel Depth, message=FALSE, warning=FALSE, results='hide', fig.height=6, fig.width=3.1}
 par(mfrow=c(3,1))
@@ -952,40 +966,62 @@ fitted <- predict(results, newdata = newdata, type = "response")
 lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
 #legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(-.13, 0), xpd = NA)
 
-results=table(merged$Dominant2, merged$Color.Morph)
-chisq.test(results)
-prop.table(results, margin = 2)
-par(new=T, mar=c(10, 10, .5, 6.3))
-barplot(prop.table(results, margin = 2), col = c(alpha("red", 0.35), alpha("blue", 0.35)), xlab = "", ylab = "", yaxt = 'n')
+#results=table(merged$Dominant2, merged$Color.Morph)
+#chisq.test(results)
+#prop.table(results, margin = 2)
+#par(new=T, mar=c(10, 10, .5, 6.3))
+#barplot(prop.table(results, margin = 2), col = c(alpha("red", 0.35), alpha("blue", 0.35)), xlab = "", ylab = "", yaxt = 'n')
 #legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.35), alpha("red", 0.35)), inset = c(0, 0), xpd = NA)
 ```
 
-```{r, warning=FALSE, results='hide'}
-merged$DomCol <- interaction(merged$Dom, merged$Color.Morph)
-merged$DomCol <- factor(merged$DomCol, levels=rev(levels(merged$DomCol)))
-results=table(merged$DomCol, merged$DepthInt)
-results
-props <- prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6), lwd = 0.25)
-barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), 
-        xlab = "", ylab = "",
-        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
-par(lwd=1)
-legend("topright", legend=c("OD", "OC", "BD", "BC"), fill=c(alpha("orange", 0.75), alpha("orange", 0.25), alpha("sienna", 0.75), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
-par(new=T, mar=c(4.2, 4, 2, 6))
-box()
 
-merged$DomCol2 <- interaction(merged$Color.Morph, merged$Dom)
-merged$DomCol2 <- factor(merged$DomCol2, levels=rev(levels(merged$DomCol2)))
-results=table(merged$DomCol2, merged$DepthInt)
-results
-props <- prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6), lwd = 0.25)
-barplot(props[,1:11], col = c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), 
-        xlab = "", ylab = "",
-        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
-par(lwd=1)
-legend("topright", legend=c("OD", "BD", "OC", "BC"), fill=c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
-par(new=T, mar=c(4.2, 4, 2, 6))
+## Proportion of Clade D when Present
+```{r, DHistogram}
+propD <- merged$propD[which(merged$propD > 0 & merged$propD < 1)]
+
+propDHist <- subset(merged, propD > 0 & propD < 1)
+propDHist$propD <- cut(propDHist$propD, breaks = 5)
+DCol=table(propDHist$Color.Morph, propDHist$propD)
+z <- with(subset(merged, propD==0), table(Color.Morph))
+o <- with(subset(merged, propD==1), table(Color.Morph))
+DCol <- cbind(z, DCol, o)
+par(mar=c(4, 4, 2, 0))
+bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
+axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4, 0.6, 0.8, "<1.0"))
+axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
+```
+
+
+## Color Morph and Dominant Symbiont at each Reef
+```{r, results='hide'}
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+
+XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+XY4[XY4 == 0.000] <- 0.0000000001
+rownames(XY4) <- XY4$Reef.ID
+XY4 <- XY4[, -1]
+XY4 <- na.omit(XY4)
+apply(XY4, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
+                   reef["Orange.D.y"]), radius = 7, 
+               col = c("turquoise4", "steelblue1", "tomato", "coral"))
+})
+
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
+
+par(new=T, mar=c(14,21,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.9, 21.41, -157.75, 21.53)
 box()
 ```
+Adjusted values of Dominant Symbiont and Color Morph adjusted for the influence of depth.
+
+
+## Orange and Brown Color Morph
+![](brown_orange (1).png)
