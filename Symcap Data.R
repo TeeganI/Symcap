@@ -864,3 +864,20 @@ par(lwd=1)
 legend("topright", legend=c("OD", "BD", "OC", "BC"), fill=c(alpha("orange", 0.75), alpha("sienna", 0.75), alpha("orange", 0.25), alpha("sienna", 0.25)), inset = c(-.23, 0), xpd = NA)
 par(new=T, mar=c(4.2, 4, 2, 6))
 box()
+
+merged$DepthInt <- cut(merged$newDepth, breaks = 0:13)
+results=table(merged$Mix, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c("red", "orange", "yellow", "green"), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("C", "CD", "DC", "D"), 
+       fill=c("red", "orange", "yellow", "green"), inset = c(-.2, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+results=glm(Mix~newDepth, family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Dominant Symbiont Proportion")

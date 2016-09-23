@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "September 21, 2016"
+date: "September 22, 2016"
 output: 
   html_document:
     toc: yes
@@ -964,7 +964,7 @@ results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
 fitted <- predict(results, newdata = newdata, type = "response")
 lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
-#legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(-.13, 0), xpd = NA)
+legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(0, 0), xpd = NA)
 
 #results=table(merged$Dominant2, merged$Color.Morph)
 #chisq.test(results)
@@ -1020,8 +1020,22 @@ plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="w
 rect(-157.9, 21.41, -157.75, 21.53)
 box()
 ```
+
 Adjusted values of Dominant Symbiont and Color Morph adjusted for the influence of depth.
 
 
 ## Orange and Brown Color Morph
 ![](brown_orange (1).png)
+
+
+## Symbiont Community Composition by Dominant Symbiont 
+```{r, warning=FALSE, results='hide'}
+results=table(Symcap$Mix, Symcap$Dom)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), xlab = "Dominant Symbiont", ylab = "Symbiont Mixture Proportion")
+legend("topright", legend=c("C", "CD", "DC", "D"), fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), inset = c(-.2, 0), xpd = NA)
+```
+
+When looking at D-only colonies, the Ct values are on the higher end of the spectrum (35 or greater) indicating poor amplification and the potential for C amplification being pushed back in the cycle. This is supported by the fact that 5 of the 9 D-only colonies had C present in 1 qPCR replicate.
