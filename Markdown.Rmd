@@ -127,8 +127,10 @@ merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 # Coral Collection Map
 ```{r Collection Map, message=FALSE, warning=FALSE, results='hide'}
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+#KB <- c(21.46087401, -157.809907) 
+#KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
+#save(KBMap, file = "KBMap.Rdata")
+load("KBMap.Rdata")
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -313,8 +315,6 @@ chisq.test(results)
 ```
 
 ```{r, warning=FALSE, results='hide'}
-KB <- c(21.46087401, -157.809907) 
-KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
 Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
@@ -357,7 +357,7 @@ mantel(dom.dists~reef.dists)
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
 
 #### Clustering of Similar Reefs
-```{r, eval=FALSE}
+```{r}
 doms <- hclust(dom.dists)
 plot(doms, labels = XY$Reef.ID)
 
