@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "September 22, 2016"
+date: "September 23, 2016"
 output: 
   html_document:
     toc: yes
@@ -75,6 +75,14 @@ Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 Symcap <- Symcap[with(Symcap, order(Colony)), ]
 Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+```
+
+
+# Change Bay Area for 18, 26 and F7-18
+```{r}
+Symcap$Bay.Area[which(Symcap$Reef.ID=="26")] <- "Central"
+Symcap$Bay.Area[which(Symcap$Reef.ID=="18")] <- "Southern"
+Symcap$Bay.Area[which(Symcap$Reef.ID=="F7-18")] <- "Southern"
 ```
 
 
@@ -244,11 +252,18 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 ```
 
 
+### Color Morph by Bay Area
+```{r Color~BayArea}
+results=table(merged$Color.Morph, merged$Bay.Area)
+prop.table(results, margin = 2)
+chisq.test(results)
+```
+
+
 ### Color Morph by Reef ID
 ```{r ColorMorph~ReefID, warning=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Reef.ID)
 chisq.test(results)
-prop.table(results, margin = 2)
 ```
 
 ```{r, warning=FALSE, results='hide'}
@@ -275,6 +290,7 @@ apply(XY, MARGIN=1, FUN=function(reef) {
 })
 ```
 
+
 #### Mantel Test for Spatial Autocorrelation
 ```{r}
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
@@ -293,6 +309,62 @@ mantel(col.dists~reef.dists)
 ```
 
 
+### Color Morph by Bay Area Adjusted for Depth
+```{r, results='hide'}
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
+dat <- aggregate(data.frame(prop=merged$Color), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) 
+mod <- glm(Color ~ newDepth + Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "Raw", "O.Adj")
+
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
+propCol=prop.table(propCol, margin = 2)
+propCol <- as.data.frame.matrix(propCol)
+props <- data.frame(t(propCol))
+props$Reef.ID <- rownames(props)
+XY<-merge(XY, props, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$B.Adj <- 1-XY2$O.Adj
+
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
+
+rownames(XY2) <- XY2$Reef.ID
+XY2 <- XY2[, -1]
+XY2 <- na.omit(XY2)
+apply(XY2, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["O.Adj"], reef["B.Adj"]), radius = 7, 
+               col = c("orange", "sienna"))
+})
+```
+
+
+#### Mantel Test for Spatial Autocorrelation
+```{r}
+reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
+col.dists <- dist(XY2$O.Adj)
+set.seed(12456)
+mantel(col.dists~reef.dists)
+```
+
+
+### Symbiont Community Composition by Bay Area
+```{r Mix~BayArea, warning=FALSE}
+results=table(Symcap$Mix, Symcap$Bay.Area)
+prop.table(results, margin = 2)
+chisq.test(results)
+```
+
+
 ## Non-Significant Differences
 ### Dominant Symbiont by Reef Type
 ``` {r Dom~ReefType, echo=FALSE}
@@ -302,7 +374,7 @@ chisq.test(results)
 
 
 ### Dominant Symbiont by Bay Area
-```{r Dom~BayArea, echo=FALSE}
+```{r Dom~BayArea}
 results=table(Symcap$Dom, Symcap$Bay.Area)
 chisq.test(results)
 ```
@@ -357,7 +429,7 @@ mantel(dom.dists~reef.dists)
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
 
 #### Clustering of Similar Reefs
-```{r}
+```{r, results='hide'}
 doms <- hclust(dom.dists)
 plot(doms, labels = XY$Reef.ID)
 
@@ -537,6 +609,14 @@ box()
 ```
 Raw proportion values for Color Morph and Dominant Symbiont at each reef not discounting the effect of depth.
 
+##### Mantel Test for Spatial Autocorrelation
+```{r}
+reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
+dom.dists <- bcdist(cbind(XY4$Brown.C.x, XY4$Orange.C.x, XY4$Brown.D.x, XY4$Orange.D.x))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
+```
+
 ```{r, results='hide'}
 PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 
@@ -576,7 +656,7 @@ mantel(dom.dists~reef.dists)
 When considering the effect of bay area on the interaction of color morph and dominant symbiont, the proportion of Brown colonies dominated by D increases as you move from the north to the south of the bay. The proportion increases almost 4x, yet the small number of colonies makes this non-compelling. 
 ```{r, ColDom~BayArea}
 Type=table(merged$ColDom, merged$Bay.Area)
-prop.table(Type)
+prop.table(Type, margin = 2)
 chisq.test(Type)
 ```
 
@@ -588,23 +668,9 @@ chisq.test(results)
 ```
 
 
-### Color Morph by Bay Area
-```{r Color~BayArea, echo=FALSE}
-results=table(Symcap$Color.Morph, Symcap$Bay.Area)
-chisq.test(results)
-```
-
-
 ### Symbiont Community Composition by Reef Type
 ```{r Mix~ReefType, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.Type)
-chisq.test(results)
-```
-
-
-### Symbiont Community Composition by Bay Area
-```{r Mix~BayArea, warning=FALSE, echo=FALSE}
-results=table(Symcap$Mix, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
@@ -714,6 +780,13 @@ Bars indicate relative frequency of Brown vs. Orange color morph dominance at 1m
 merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
 table(merged$Dom, merged$Color.Morph, merged$Reef.Area)
 model=aov(Dominant~Color.Morph*Reef.Area, data = merged)
+Anova(model, type = 2)
+```
+
+
+###
+```{r}
+model=aov(Dominant~newDepth*Bay.Area, data = merged)
 Anova(model, type = 2)
 ```
 
@@ -858,7 +931,7 @@ mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
 
 ### Dominant Symbiont by Depth and Reef ID
 ```{r, warning=FALSE}
-model2=aov(Dominant~newDepth*Reef.Type, data = merged)
+model2=aov(Dominant~newDepth*Reef.ID, data = merged)
 Anova(model2, type = 2)
 ```
 
@@ -1039,3 +1112,14 @@ legend("topright", legend=c("C", "CD", "DC", "D"), fill=c(alpha("blue", 0.75), a
 ```
 
 When looking at D-only colonies, the Ct values are on the higher end of the spectrum (35 or greater) indicating poor amplification and the potential for C amplification being pushed back in the cycle. This is supported by the fact that 5 of the 9 D-only colonies had C present in 1 qPCR replicate.
+
+
+## Dominant Symbiont by Color Morph
+```{r, warning=FALSE, results='hide'}
+results=table(Symcap$Dom, Symcap$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c(alpha("blue", 0.75), alpha("red", 0.75)), xlab = "Color Morph", ylab = "Dominant Symbiont Proportion")
+legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.75), alpha("red", 0.75)), inset = c(-.2, 0), xpd = NA)
+```

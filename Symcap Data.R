@@ -231,14 +231,57 @@ mtext(side = 4, text = "C                                       D", line = 2, ce
 mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="ColorMorph~ReefArea", height = 4, width = 7)
-Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-results=table(Symcap$Color.Morph, Symcap$Reef.Area)
-chisq.test(results)
-prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Reef Area", ylab = "Color Morph Proportion")
-legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
+pdf(file="ColDom~Depth")
+par(mfrow=c(3,1))
+
+merged$DepthInt <- cut(merged$newDepth, breaks = 0:13)
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
+results=table(merged$Dominant2, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(2, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(0, 0), xpd = NA)
+par(new = T)
+par(mar=c(2.1, 4, 2, 6))
+results=glm(Dominant~newDepth, family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="Probability of D-Dominance")
+
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
+results=table(merged$Color, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(3, 4, 1, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
+        xlab = "", ylab = "Probability of Orange-Dominance",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(0, 0), xpd = NA)
+par(new = T)
+par(mar=c(3.1, 4, 1, 6))
+merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
+results=glm(Color2~newDepth, family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="")
+
+df <- subset(merged, Color.Morph=="Orange")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,11,0.01))
+par(mar=c(4, 4, 0, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,11,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="Depth (m)", ylab="Probabilty of D-Dominance", axisnames=FALSE, xaxs = "i", yaxs = "i")
+abline(h = 0.5, lty=2)
+df <- subset(merged, Color.Morph=="Brown")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,11,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
+legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(0, 0), xpd = NA)
 dev.off()
 
 #RGoogleMaps
@@ -881,3 +924,56 @@ par(mar=c(4.2, 4, 2, 6))
 results=glm(Mix~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Dominant Symbiont Proportion")
+
+merged$Color <- ifelse(merged$Color.Morph=="Brown", 0, 1)
+dat <- aggregate(data.frame(prop=merged$Color), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Color ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw", "Brown")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$Orange <- 1-XY2$Brown.y
+
+reef.dists <- dist(cbind(XY2$Longitude, XY2$Latitude))
+col.dists <- dist(XY2$Orange)
+set.seed(12456)
+mantel(col.dists~reef.dists)
+
+model3=aov(Dominant2~newDepth*Reef., data = merged)
+Anova(model3, type = 2)
+
+merged$Bay.Area[which(merged$Reef.ID=="26")] <- "Central"
+merged$Bay.Area[which(merged$Reef.ID=="18")] <- "Southern"
+merged$Bay.Area[which(merged$Reef.ID=="F7-18")] <- "Southern"
+
+results=table(merged$Dominant, merged$Bay.Area)
+chisq.test(results)
+
+table(merged$Dom, merged$Color.Morph, merged$Bay.Area)
+model=aov(Dominant~newDepth*Bay.Area, data = merged)
+Anova(model, type = 2)
+
+reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
+dom.dists <- dist(XY2$Raw)
+set.seed(12456)
+mantel(dom.dists~reef.dists)
+
+nodeep <- subset(merged, !Reef.ID=="Deep")
+results=table(nodeep$Dom, nodeep$Bay.Area)
+chisq.test(results)
+
+a <- subset(XY4, !Reef.ID=="Deep")
+reef.dists <- dist(cbind(a$Longitude, a$Latitude))
+dom.dists <- bcdist(cbind(a$Brown.C.x, a$Orange.C.x, a$Brown.D.x, a$Orange.D.x))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
+
+reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
+dom.dists <- bcdist(cbind(a$Brown.C.x, a$Orange.C.x, a$Brown.D.x, a$Orange.D.x))
+set.seed(12456)
+mantel(dom.dists~reef.dists)
