@@ -175,8 +175,9 @@ Type=table(merged$ColDom, merged$Bay.Area)
 Type
 chisq.test(Type)
 
-reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
-dom.dists <- bcdist(cbind(XY4$Brown.C.x, XY4$Orange.C.x, XY4$Brown.D.x, XY4$Orange.D.x))
+B <- subset(XY2, !Reef.ID=="13")
+reef.dists <- dist(cbind(B$Longitude, B$Latitude))
+dom.dists <- bcdist(B$c.adj)
 set.seed(12456)
 mantel(dom.dists~reef.dists)
 
@@ -944,36 +945,63 @@ col.dists <- dist(XY2$Orange)
 set.seed(12456)
 mantel(col.dists~reef.dists)
 
-model3=aov(Dominant2~newDepth*Reef., data = merged)
+model3=aov(Dominant~Bay.Area, data = c)
 Anova(model3, type = 2)
+
+merged$Bay.Area[which(merged$Reef.ID=="26")] <- "Central"
+merged$Bay.Area[which(merged$Reef.ID=="F4-34")] <- "Central"
+
+results=table(merged$Dom, merged$Bay.Area)
+chisq.test(results)
+
+c <- subset(merged, !Reef.ID=="Deep" & !Reef.ID=="13")
+results=table(c$Dom, c$Bay.Area)
+chisq.test(results)
+
+b$Dominant <- ifelse(b$Dom=="C", 0, 1)
+dat <- aggregate(data.frame(prop=b$Dominant), by=list(Bay.Area=b$Bay.Area), FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Bay.Area, data=b)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Bay.Area")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Bay.Area")
+colnames(res) <- c("Bay.Area", "raw.c", "c.adj")
+
+results=table(res$c.adj, res$Bay.Area)
+chisq.test(results)
+
+b$ColDom <- interaction(b$Color.Morph, b$Dom)
+model <- multinom(ColDom~newDepth+Bay.Area, b)
+means <- lsmeans(model, specs = "Bay.Area")
+
+Type=table(b$ColDom, b$Bay.Area)
+prop.table(Type, margin = 2)
+chisq.test(Type)
 
 merged$Bay.Area[which(merged$Reef.ID=="26")] <- "Central"
 merged$Bay.Area[which(merged$Reef.ID=="18")] <- "Southern"
 merged$Bay.Area[which(merged$Reef.ID=="F7-18")] <- "Southern"
+model3=aov(Color~newDepth*Bay.Area, data = merged)
+Anova(model3, type = 2)
 
-results=table(merged$Dominant, merged$Bay.Area)
+df <- subset(merged, Bay.Area=="Northern")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,11,0.01))
+par(mar=c(4, 4, 2, 6))
+fitted <- predict(results, newdata = newdata, type = "response")
+plot(fitted ~ seq(0,11,0.01), ylim = c(0,1), type="l", col="red", lwd=3, xlab="", ylab="", axisnames=FALSE)
+abline(h = 0.5, lty=2)
+df <- subset(merged, Bay.Area=="Central")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,11,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0,11,0.01), col="gold", lwd=3)
+df <- subset(merged, Bay.Area=="Southern")
+results=glm(Dominant~newDepth, family = "binomial", data = df)
+newdata <- list(newDepth=seq(0,11,0.01))
+fitted <- predict(results, newdata = newdata, type = "response")
+lines(fitted~seq(0,11,0.01), col="green", lwd=3)
+
+z <- subset(merged, !Reef.ID=="Deep")
+results=table(z$DomCol, z$Bay.Area)
+prop.table(results, margin = 2)
 chisq.test(results)
-
-table(merged$Dom, merged$Color.Morph, merged$Bay.Area)
-model=aov(Dominant~newDepth*Bay.Area, data = merged)
-Anova(model, type = 2)
-
-reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
-dom.dists <- dist(XY2$Raw)
-set.seed(12456)
-mantel(dom.dists~reef.dists)
-
-nodeep <- subset(merged, !Reef.ID=="Deep")
-results=table(nodeep$Dom, nodeep$Bay.Area)
-chisq.test(results)
-
-a <- subset(XY4, !Reef.ID=="Deep")
-reef.dists <- dist(cbind(a$Longitude, a$Latitude))
-dom.dists <- bcdist(cbind(a$Brown.C.x, a$Orange.C.x, a$Brown.D.x, a$Orange.D.x))
-set.seed(12456)
-mantel(dom.dists~reef.dists)
-
-reef.dists <- dist(cbind(XY4$Longitude, XY4$Latitude))
-dom.dists <- bcdist(cbind(a$Brown.C.x, a$Orange.C.x, a$Brown.D.x, a$Orange.D.x))
-set.seed(12456)
-mantel(dom.dists~reef.dists)
