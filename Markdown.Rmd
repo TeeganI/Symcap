@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "September 28, 2016"
+date: "September 29, 2016"
 output: 
   html_document:
     toc: yes
@@ -1112,3 +1112,41 @@ box()
 ```
 
 Adjusted values of Dominant Symbiont and Color Morph adjusted for the influence of depth.
+
+
+## Color Morph and Dominant Symbiont per Bay Area
+```{r, results='hide'}
+Latitude=aggregate(Latitude~Bay.Area, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Bay.Area, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Bay.Area", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+
+merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
+model <- multinom(ColDom~newDepth+Bay.Area, merged)
+means <- lsmeans(model, specs = "Bay.Area")
+means
+newdat <- data.frame(Bay.Area = levels(merged$Bay.Area),
+                   newDepth = mean(merged$newDepth, na.rm=T))
+pred <- predict(model, newdata = newdat, "probs")
+new <- data.frame(Bay.Area=as.character(newdat[,1]), pred)
+
+XY4 <- merge(XY, new, by="Bay.Area", all=T)
+XY4[XY4 == 0.000] <- 0.0000000001
+rownames(XY4) <- XY4$Bay.Area
+
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+XY4$Bay.Area <- as.numeric(XY4$Bay.Area)
+apply(XY4, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C"], reef["Orange.C"], reef["Brown.D"], 
+                   reef["Orange.D"]), radius = 20, 
+               col = c("turquoise4", "steelblue1", "tomato", "coral"))
+})
+
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
+```

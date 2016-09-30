@@ -1002,6 +1002,11 @@ fitted <- predict(results, newdata = newdata, type = "response")
 lines(fitted~seq(0,11,0.01), col="green", lwd=3)
 
 z <- subset(merged, !Reef.ID=="Deep")
-results=table(z$DomCol, z$Bay.Area)
+results=table(merged$DomCol, merged$Bay.Area)
 prop.table(results, margin = 2)
 chisq.test(results)
+
+reef.dists <- dist(cbind(XY2$Longitude, XY2$Latitude))
+dom.dists <- dist(XY2$c.adj)
+set.seed(12456)
+mantel(dom.dists~reef.dists)
