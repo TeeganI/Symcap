@@ -21,6 +21,7 @@ library(foreign)
 library(nnet)
 library(ggplot2)
 library(mlogit)
+library(mapplots)
 
 #import collection data
 Coral_Data <- read.csv("Coral_Collection.csv")
@@ -1010,3 +1011,31 @@ reef.dists <- dist(cbind(XY2$Longitude, XY2$Latitude))
 dom.dists <- dist(XY2$c.adj)
 set.seed(12456)
 mantel(dom.dists~reef.dists)
+
+# 3 pie charts on shape file
+pdf(file = "3pie")
+c.slices <- c(42, 23, 5, 30)
+n.slices <- c(36, 33, 2, 29)
+s.slices <- c(40, 24, 8, 28)
+central <- pie(c.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
+northern <- pie(n.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
+southern <- pie(s.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
+par(mar=c(3,3,0,0))
+plot(HI, xlim=c(-157.814, -157.81), ylim=c(21.42, 21.51), 
+     lwd=2, col="gray") 
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), 
+       fill = c("turquoise4", "steelblue1", "tomato", "coral"), bg = "white")
+add.pie(z = c(42, 23, 5, 30), x = -157.8109, y = 21.46222, labels = NA, radius = 0.005, 
+        col = c("turquoise4", "steelblue1", "tomato", "coral"))
+add.pie(z = c(36, 33, 2, 29), x = -157.8286, y = 21.47348, labels = NA, radius = 0.005,
+        col= c("turquoise4", "steelblue1", "tomato", "coral"))
+add.pie(z = c(40, 24, 8, 28), x = -157.7965, y = 21.44077, labels = NA, radius = 0.005,
+        col= c("turquoise4", "steelblue1", "tomato", "coral"))
+box()
+par(new=T, mar=c(23,22,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.87, 21.41, -157.75, 21.52)
+box()
+dev.off()
