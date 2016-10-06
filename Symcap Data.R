@@ -1039,3 +1039,13 @@ plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="w
 rect(-157.87, 21.41, -157.75, 21.52)
 box()
 dev.off()
+
+C <- subset(merged, Dom=="C")
+C$DepthInt <- cut(C$newDepth, breaks = 0:13)
+results=table(C$Mix, C$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c("red", "orange", "yellow", "green"), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
