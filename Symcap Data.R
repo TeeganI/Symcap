@@ -1049,3 +1049,18 @@ par(mar=c(4, 4, 2, 6), lwd = 0.25)
 barplot(props[,1:11], col = c("red", "orange", "yellow", "green"), 
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+
+
+pdf(file="Mix~Dom", width = 3.5, height = 4)
+results=table(Symcap$Mix, Symcap$Dom)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), 
+        col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), 
+                alpha("red", 0.75)), xlab = "Dominant Symbiont", 
+        ylab = "Symbiont Mixture Proportion")
+legend("topright", legend=c("C", "CD", "DC", "D"), 
+       fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), 
+              alpha("red", 0.75)), inset = c(-.6, 0), xpd = NA)
+dev.off()
