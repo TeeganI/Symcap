@@ -1064,3 +1064,18 @@ legend("topright", legend=c("C", "CD", "DC", "D"),
        fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), 
               alpha("red", 0.75)), inset = c(-.6, 0), xpd = NA)
 dev.off()
+
+threshdepth <- function(dominant) {
+  plot(merged$Dominant2~merged$newDepth, xlab="Depth (m)", ylab = "Probability of Clade C Symbiont")
+  abline(h = 0.5, lty=2)
+  results=glm(Dominant2~newDepth, family = "binomial", data = merged)
+  pval <- data.frame(coef(summary(results)))$`Pr...z..`[2]
+  mtext(side=3, text=pval)
+  newdata <- list(newDepth=seq(0,11,0.01))
+  fitted <- predict(results, newdata = newdata, type = "response")
+  lines(fitted ~ seq(0,11,0.01))
+  thresh <- ifelse(pval < 0.05,
+                   newdata$newDepth[which(diff(sign(fitted - 0.5))!=0)], NA)
+  return(thresh)
+}
+sapply(merged, FUN = threshdepth)
