@@ -140,9 +140,13 @@ merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
 merged$DepthInt <- cut(merged$Depth..m., breaks = 0:13)
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
-results=table(merged$Dominant2, merged$DepthInt)
+
+results=table(merged$Color.Morph, merged$Bay.Area)
 results
 props <- prop.table(results, margin = 2)
+props
+chisq.test(props)
+
 par(mar=c(4, 4, 2, 6), lwd = 0.25)
 barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
         xlab = "", ylab = "",
@@ -1079,3 +1083,6 @@ threshdepth <- function(dominant) {
   return(thresh)
 }
 sapply(merged, FUN = threshdepth)
+
+merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
+Type=table(merged$ColDom, merged$Bay.Area)
