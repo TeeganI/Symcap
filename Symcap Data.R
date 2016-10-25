@@ -1055,18 +1055,25 @@ barplot(props[,1:11], col = c("red", "orange", "yellow", "green"),
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 
 
-pdf(file="Mix~Dom", width = 3.5, height = 4)
-results=table(Symcap$Mix, Symcap$Dom)
-chisq.test(results)
-prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), 
-        col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), 
-                alpha("red", 0.75)), xlab = "Dominant Symbiont", 
-        ylab = "Symbiont Mixture Proportion")
-legend("topright", legend=c("C", "CD", "DC", "D"), 
-       fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), 
-              alpha("red", 0.75)), inset = c(-.6, 0), xpd = NA)
+pdf(file="Collection Map", width = 6, height = 4)
+load("KBMap.Rdata")
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
+newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
+XY$X <- newcoords$newX
+XY$Y <- newcoords$newY
+XY <- subset(XY, Reef.ID!="37")
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, 
+                pch=21, bg="#FF7F50", lwd=1.5, cex = 1)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+par(new=T, mar=c(10,17,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.87, 21.41, -157.75, 21.52)
 dev.off()
 
 threshdepth <- function(dominant) {

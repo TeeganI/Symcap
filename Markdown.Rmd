@@ -148,7 +148,7 @@ XY$X <- newcoords$newX
 XY$Y <- newcoords$newY
 XY <- subset(XY, Reef.ID!="37")
 par(oma=c(3,3,0,0))
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2, cex = 1.3)
+PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, pch=21, bg="#FF7F50", lwd=2, cex = 1.2)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
 axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
 par(new=T, mar=c(14,21,0,0))
@@ -711,7 +711,7 @@ par(new = T)
 par(mar=c(4.2, 4, 2, 6))
 results=glm(Dominant~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Dominant Symbiont Proportion")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
 ```
 
 Bars indicate relative frequency of clade C vs. D dominance at 1m depth intervals when pooling all samples collected.
@@ -768,7 +768,7 @@ par(mar=c(4.2, 4, 2, 6))
 merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
 results=glm(Color2~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Color Morph Proportion")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
 ```
 
 Bars indicate relative frequency of Brown vs. Orange color morph dominance at 1m depth intervals when pooling all samples collected.
