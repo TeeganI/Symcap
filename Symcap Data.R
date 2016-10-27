@@ -1017,30 +1017,24 @@ set.seed(12456)
 mantel(dom.dists~reef.dists)
 
 # 3 pie charts on shape file
-pdf(file = "3pie")
+pdf(file = "pies")
 c.slices <- c(42, 23, 5, 30)
 n.slices <- c(36, 33, 2, 29)
 s.slices <- c(40, 24, 8, 28)
-central <- pie(c.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
-northern <- pie(n.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
-southern <- pie(s.slices, col = c("turquoise4", "steelblue1", "tomato", "coral"), labels = NA)
+central <- pie(c.slices, col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.75), alpha("red", 0.25)), labels = NA)
+northern <- pie(n.slices, col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.75), alpha("red", 0.25)), labels = NA)
+southern <- pie(s.slices, col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.75), alpha("red", 0.25)), labels = NA)
 par(mar=c(3,3,0,0))
 plot(HI, xlim=c(-157.814, -157.81), ylim=c(21.42, 21.51), 
      lwd=2, col="gray") 
 legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), 
-       fill = c("turquoise4", "steelblue1", "tomato", "coral"), bg = "white")
+       fill = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), bg = "white")
 add.pie(z = c(42, 23, 5, 30), x = -157.8109, y = 21.46222, labels = NA, radius = 0.005, 
-        col = c("turquoise4", "steelblue1", "tomato", "coral"))
+        col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)))
 add.pie(z = c(36, 33, 2, 29), x = -157.8286, y = 21.47348, labels = NA, radius = 0.005,
-        col= c("turquoise4", "steelblue1", "tomato", "coral"))
+        col= c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)))
 add.pie(z = c(40, 24, 8, 28), x = -157.7965, y = 21.44077, labels = NA, radius = 0.005,
-        col= c("turquoise4", "steelblue1", "tomato", "coral"))
-box()
-par(new=T, mar=c(23,22,0,0))
-HI <- readOGR("coast_n83.shp", "coast_n83") 
-HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
-plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
-rect(-157.87, 21.41, -157.75, 21.52)
+        col= c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)))
 box()
 dev.off()
 
@@ -1055,25 +1049,11 @@ barplot(props[,1:11], col = c("red", "orange", "yellow", "green"),
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 
 
-pdf(file="Collection Map", width = 6, height = 4)
-load("KBMap.Rdata")
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-XY <- subset(XY, Reef.ID!="37")
-par(oma=c(3,3,0,0))
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, col=153, 
-                pch=21, bg="#FF7F50", lwd=1.5, cex = 1)
-axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
-axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
-par(new=T, mar=c(10,17,0,0))
-HI <- readOGR("coast_n83.shp", "coast_n83") 
-HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
-plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
-rect(-157.87, 21.41, -157.75, 21.52)
+pdf(file="#Color", width = 3.5, height = 4)
+counts <- table(merged$Color.Morph)
+barplot(counts, 
+        col = c(alpha("sienna", 0.5), alpha("orange", 0.5)), 
+        xlab = "Color Morph", ylab = "Number of Colonies", ylim = c(0, 500))
 dev.off()
 
 threshdepth <- function(dominant) {
@@ -1093,3 +1073,15 @@ sapply(merged, FUN = threshdepth)
 
 merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
 Type=table(merged$ColDom, merged$Bay.Area)
+
+add.pie(z = c(42, 23, 5, 30), x = -157.8109, y = 21.46222, labels = NA, radius = 0.005, 
+        col = c("turquoise4", "steelblue1", "tomato", "coral"))
+add.pie(z = c(36, 33, 2, 29), x = -157.8286, y = 21.47748, labels = NA, radius = 0.005,
+        col= c("turquoise4", "steelblue1", "tomato", "coral"))
+add.pie(z = c(40, 24, 8, 28), x = -157.7965, y = 21.44077, labels = NA, radius = 0.005,
+        col= c("turquoise4", "steelblue1", "tomato", "coral"))
+
+counts <- table(merged$Dom)
+barplot(counts, 
+        col = c(alpha("blue", 0.5), alpha("red", 0.5)), 
+        xlab = "Dominant Symbiont", ylab = "Number of Colonies", ylim = c(0, 500))
