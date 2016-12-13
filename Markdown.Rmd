@@ -579,11 +579,22 @@ means <- lsmeans(model, specs = "Reef.ID")
 means
 pp <- fitted(model)
 
+depthmod <- multinom(ColDom ~ newDepth, merged)
+depthdat <- data.frame(newDepth = seq(0,12,0.5))
+depthpred <- predict(depthmod, newdata=depthdat, "probs")
+plot(NA, xlim=c(0,12), ylim=c(0,1))
+stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
+          ylim=c(0,1), xaxlab=depthdat$newDepth, xlab="Depth", ylab="Probability")
+legend("top", legend=c("Brown.C",  "Brown.D", "Orange.C","Orange.D"), pch=22,
+       pt.bg=c("burlywood4","burlywood3","darkorange3","darkorange"), inset=-0.3, xpd=NA, bty="n")
+
 newdat <- data.frame(Reef.ID = levels(merged$Reef.ID),
                    newDepth = mean(merged$newDepth, na.rm=T))
 pred <- predict(model, newdata = newdat, "probs")
 new <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
 XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+
+
 
 PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 
