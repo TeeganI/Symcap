@@ -237,57 +237,33 @@ mtext(side = 4, text = "C                                       D", line = 2, ce
 mtext(side = 2, text = "Probability of clade C Symbiont", line = 3, cex = 1)
 
 #Export Image
-pdf(file="ColDom~Depth")
-par(mfrow=c(3,1))
+pdf(file="Pies", width = 6, height = 4)
+par(oma=c(3,3,0,0))
+PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
+axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
+axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
 
-merged$DepthInt <- cut(merged$newDepth, breaks = 0:13)
-merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
-merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
-results=table(merged$Dominant2, merged$DepthInt)
-results
-props <- prop.table(results, margin = 2)
-par(mar=c(2, 4, 2, 6), lwd = 0.25)
-barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
-        xlab = "", ylab = "",
-        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
-par(lwd=1)
-legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(0, 0), xpd = NA)
-par(new = T)
-par(mar=c(2.1, 4, 2, 6))
-results=glm(Dominant~newDepth, family = "binomial", data = merged)
-fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="Probability of D-Dominance")
+XY4 <- merge(XY3, new, by="Reef.ID", all=T)
+XY4[XY4 == 0.000] <- 0.0000000001
+rownames(XY4) <- XY4$Reef.ID
+XY4 <- XY4[, -1]
+XY4 <- na.omit(XY4)
+apply(XY4, MARGIN=1, FUN=function(reef) {
+  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
+               x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
+                   reef["Orange.D.y"]), radius = 7, 
+               col = c("royalblue4", "cornflowerblue", "red", "rosybrown2"))
+})
 
-merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
-results=table(merged$Color, merged$DepthInt)
-results
-props <- prop.table(results, margin = 2)
-par(mar=c(3, 4, 1, 6), lwd = 0.25)
-barplot(props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
-        xlab = "", ylab = "Probability of Orange-Dominance",
-        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
-par(lwd=1)
-legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(0, 0), xpd = NA)
-par(new = T)
-par(mar=c(3.1, 4, 1, 6))
-merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
-results=glm(Color2~newDepth, family = "binomial", data = merged)
-fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="")
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), 
+       fill = c("royalblue4", "cornflowerblue", "red", "rosybrown2"), bg = "white")
 
-df <- subset(merged, Color.Morph=="Orange")
-results=glm(Dominant~newDepth, family = "binomial", data = df)
-newdata <- list(newDepth=seq(0,11,0.01))
-par(mar=c(4, 4, 0, 6))
-fitted <- predict(results, newdata = newdata, type = "response")
-plot(fitted ~ seq(0,11,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="Depth (m)", ylab="Probabilty of D-Dominance", axisnames=FALSE, xaxs = "i", yaxs = "i")
-abline(h = 0.5, lty=2)
-df <- subset(merged, Color.Morph=="Brown")
-results=glm(Dominant~newDepth, family = "binomial", data = df)
-newdata <- list(newDepth=seq(0,11,0.01))
-fitted <- predict(results, newdata = newdata, type = "response")
-lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
-legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(0, 0), xpd = NA)
+par(new=T, mar=c(10,17,0,0))
+HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
+plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
+rect(-157.87, 21.41, -157.75, 21.52)
+box()
 dev.off()
 
 #RGoogleMaps
@@ -1085,3 +1061,7 @@ counts <- table(merged$Dom)
 barplot(counts, 
         col = c(alpha("blue", 0.5), alpha("red", 0.5)), 
         xlab = "Dominant Symbiont", ylab = "Number of Colonies", ylim = c(0, 500))
+
+install.packages("xlsx")
+library(xlsx)
+write.xlsx(x = merged, file = "Symcap.xlsx", sheetName = "Symcap_Data")

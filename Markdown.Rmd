@@ -240,6 +240,20 @@ axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4
 axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 ```
 
+```{r warning=FALSE, cache=TRUE, fig.width=5}
+propDHist <- subset(merged, propD > 0 & propD < 1)
+propDHist$propD <- cut(propDHist$propD, breaks = 5)
+DCol=table(propDHist$Color.Morph, propDHist$propD)
+z <- with(subset(merged, propD==0), table(Color.Morph))
+o <- with(subset(merged, propD==1), table(Color.Morph))
+DCol <- cbind(z, DCol, o)
+par(mar=c(2, 4, 2, 0))
+bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
+        main = "", col = c(alpha("sienna", 0.75), alpha("orange", 0.75)), 
+        axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
+axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4, 0.6, 0.8, "<1.0"))
+axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
+```
 
 ### Color Morph by Reef Area
 ```{r ColorMorph~ReefArea}
@@ -773,6 +787,25 @@ plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="
 
 Bars indicate relative frequency of Brown vs. Orange color morph dominance at 1m depth intervals when pooling all samples collected.
 
+```{r}
+merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
+results=table(merged$Color, merged$DepthInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props[,1:11], col = c(alpha("orange", 0.45), alpha("sienna", 0.45)), 
+        xlab = "", ylab = "",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.45), alpha("orange", 0.45)), inset = c(-.22, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
+results=glm(Color2~newDepth, family = "binomial", data = merged)
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
+plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
+```
+
 
 # Two-Way ANOVA
 ## Significant Interactive Effects
@@ -835,7 +868,7 @@ newdata <- list(newDepth=seq(0,11,0.01))
 fitted <- predict(results, newdata = newdata, type = "response")
 lines(fitted~seq(0,11,0.01), col="sienna", lwd=3)
 mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
-mtext(side = 2, text = "Probability of Clade C Symbiont", line = 3, cex = 1)
+mtext(side = 2, text = "Probability of Clade D Symbiont", line = 3, cex = 1)
 legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(-.22, 0), xpd = NA)
 ```
 
@@ -988,7 +1021,7 @@ On the y-axis, a value of 1 indicates a mixture and a value of 0 indicates singl
 
 # Figures
 ## Orange and Brown Color Morph
-![](brown_orange (1).png)
+![](Color Photo.png)
 
 
 ## Symbiont Community Composition by Dominant Symbiont 
@@ -1099,10 +1132,10 @@ apply(XY4, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
                x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
                    reef["Orange.D.y"]), radius = 7, 
-               col = c("turquoise4", "steelblue1", "tomato", "coral"))
+               col = c("royalblue3", "cornflowerblue", "red", "rosybrown2"))
 })
 
-legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("royalblue3", "cornflowerblue", "red", "rosybrown2"))
 
 par(new=T, mar=c(14,21,0,0))
 HI <- readOGR("coast_n83.shp", "coast_n83") 
@@ -1147,9 +1180,9 @@ apply(XY4, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
                x=c(reef["Brown.C"], reef["Orange.C"], reef["Brown.D"], 
                    reef["Orange.D"]), radius = 20, 
-               col = c("turquoise4", "steelblue1", "tomato", "coral"))
+               col = c("blue", "cornflowerblue", "red", "lightpink"))
 })
-legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("turquoise4", "steelblue1", "tomato", "coral"))
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("blue", "cornflowerblue", "red", "lightpink"))
 
 par(new=T, mar=c(14,21,0,0))
 HI <- readOGR("coast_n83.shp", "coast_n83") 
