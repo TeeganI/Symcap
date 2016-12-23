@@ -24,12 +24,12 @@ library(mlogit)
 library(mapplots)
 
 #import collection data
-Coral_Data <- read.csv("Coral_Collection.csv")
+Coral_Data <- read.csv("Data/Collection Data/Coral_Collection.csv")
 Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
 
 # Importing qPCR data
 source_url("https://raw.githubusercontent.com/jrcunning/steponeR/master/steponeR.R")
-Mcap.plates <- list.files(path = "qPCR_data", pattern = "txt$", full.names = T)
+Mcap.plates <- list.files(path = "Data/qPCR_data", pattern = "txt$", full.names = T)
 Mcap.plates
 Mcap <- steponeR(files = Mcap.plates, delim="\t",
                  target.ratios=c("C.D"), 
@@ -89,9 +89,9 @@ Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 
 #Adjust depth by sea level
-JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
-JulyTide=read.csv("Station_1612480_tide_ht_20160701-20160731.csv")
-AugustTide=read.csv("Station_1612480_tide_ht_20160801-20160812.csv")
+JuneTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160601-20160630.csv")
+JulyTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160701-20160731.csv")
+AugustTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160801-20160812.csv")
 Tide<-rbind(JuneTide, JulyTide, AugustTide)
 Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
 attributes(Tide$Time)$tzone <- "Pacific/Honolulu"

@@ -1,7 +1,7 @@
 ---
 title: "Symcap"
 author: "Teegan Innis"
-date: "October 17, 2016"
+date: "December 21, 2016"
 output: 
   html_document:
     toc: yes
@@ -12,11 +12,12 @@ output:
 ---
 --------------------------------------------------------------------------------------
 # Project Summary
-This project aimed to look at the spatial variability of *Symbiodinium* clades C and D in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distribution of symbionts at scales ranging from location in the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch), colony color morph (brown vs. orange) and depth. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of *Symbiodinium*, we furthered the understanding of stress-response potential in Kane'ohe Bay.
+This project aimed to look at the spatial variability of color morph and *Symbiodinium* clades C and D present in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distributions at scales ranging from location within the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch) and depths. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of *Symbiodinium*, we furthered the understanding of potential stress-response in Kane'ohe Bay.
 
 
 # Library Packages
 ```{r Library Packages Needed, warning=FALSE, message=FALSE}
+knitr::opts_knit$set(root.dir = normalizePath(".."))
 setwd("~/Symcap")
 library(data.table)
 library(lsmeans)
@@ -44,12 +45,12 @@ library(mlogit)
 ```
 
 
-# Import/Merge Field and qPCR Data
+# Import/Merge Collection and qPCR Data
 ```{r Import Data, warning=FALSE, message=FALSE}
-Coral_Data <- read.csv("Coral_Collection.csv")
+Coral_Data <- read.csv("Data/Collection Data/Coral_Collection.csv")
 Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
 source_url("https://raw.githubusercontent.com/jrcunning/steponeR/master/steponeR.R")
-Mcap.plates <- list.files(path = "qPCR_data", pattern = "txt$", full.names = T)
+Mcap.plates <- list.files(path = "Data/qPCR_data", pattern = "txt$", full.names = T)
 Mcap <- steponeR(files = Mcap.plates, delim="\t",
                  target.ratios=c("C.D"), 
                  fluor.norm = list(C=2.26827, D=0), 
@@ -79,7 +80,7 @@ Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 ```
 
 
-# Change Bay Area for 18, 26 and F7-18
+## Change Bay Area for 18, 26 and F7-18
 ```{r}
 Symcap$Bay.Area[which(Symcap$Reef.ID=="26")] <- "Central"
 Symcap$Bay.Area[which(Symcap$Reef.ID=="18")] <- "Southern"
@@ -87,12 +88,12 @@ Symcap$Bay.Area[which(Symcap$Reef.ID=="F7-18")] <- "Southern"
 ```
 
 
-# Adjust Depth by Mean Sea Level
-To account for the influence of tides, depth was adjusted according to the difference in sea level from the mean sea level on each collection day at 6-minute intervals. Mean sea level was obtained from NOAA tide tables for Moku o Lo'e.
+## Adjust Depth by Mean Sea Level
+To account for the influence of tides, depth was adjusted according to the differences in mean sea level from the recorded sea level on each collection day to the nearest 6-minute interval. Mean sea level was obtained from NOAA daily tide tables for Moku o Lo'e.
 ```{r Adjust Depth, warning=FALSE, message=FALSE, results='hide'}
-JuneTide=read.csv("Station_1612480_tide_ht_20160601-20160630.csv")
-JulyTide=read.csv("Station_1612480_tide_ht_20160701-20160731.csv")
-AugustTide=read.csv("Station_1612480_tide_ht_20160801-20160812.csv")
+JuneTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160601-20160630.csv")
+JulyTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160701-20160731.csv")
+AugustTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160801-20160812.csv")
 Tide<-rbind(JuneTide, JulyTide, AugustTide)
 Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
 attributes(Tide$Time)$tzone <- "Pacific/Honolulu"
@@ -135,6 +136,7 @@ merged$newDepth <- merged$Depth..m.- merged$TideHT
 
 
 # Coral Collection Map
+Collection sites represented on this map indicate the 9 fringe and 16 patch reef sites for a total of 25 collection reefs. In total, 707 colonies were collected for the analysis.
 ```{r Collection Map, message=FALSE, warning=FALSE, results='hide'}
 #KB <- c(21.46087401, -157.809907) 
 #KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = FALSE)
@@ -160,9 +162,9 @@ box()
 ```
 
 
-# Chi-Squared
+# Symbiont Dominance and Color Morph Across Geographic Scales
 ## Significant Differences
-### Dominant Symbiont by Reef Area
+### Dominant Symbiont per Reef Area
 ```{r Dom~ReefArea}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 results=table(Symcap$Dom, Symcap$Reef.Area)
@@ -174,7 +176,7 @@ legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.
 ```
 
 
-### Dominant Symbiont by Color Morph
+### Dominant Symbiont per Color Morph
 ```{r Dom~ColorMorph}
 results=table(Symcap$Dom, Symcap$Color.Morph)
 chisq.test(results)
@@ -185,7 +187,7 @@ legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.
 ```
 
 
-### Symbiont Community Composition by Color Morph
+### Symbiont Community Composition per Color Morph
 ```{r Mix~ColorMorph, warning=FALSE}
 results=table(Symcap$Mix, Symcap$Color.Morph)
 chisq.test(results)
@@ -196,7 +198,7 @@ legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "g
 ```
 
 
-### Symbiont Community Composition by Reef Area
+### Symbiont Community Composition per Reef Area
 ```{r Mix~ReefArea, warning=FALSE}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 results=table(Symcap$Mix, Symcap$Reef.Area)
@@ -208,7 +210,7 @@ legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "g
 ```
 
 
-### Symbiont Community Composition by Dominant Symbiont
+### Symbiont Community Composition per Dominant Symbiont
 ```{r Mix~Dom, warning=FALSE}
 results=table(Symcap$Mix, Symcap$Dom)
 chisq.test(results)
@@ -218,44 +220,17 @@ barplot(prop.table(results, margin = 2), col = c("gray 10", "gray 85", "gray 40"
 legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray85", "gray40", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
-When looking at D-only colonies, the Ct values are on the higher end of the spectrum (35 or greater) indicating poor amplification and the potential for C amplification being pushed back in the cycle. This is supported by the fact that 5 of the 9 D-only colonies had C present in 1 qPCR replicate.
+When looking at D-only colonies, the Ct values are on the higher end (35 or greater) indicating poor amplification  or the potential for C amplification being pushed back in the cycle. This is supported by the fact that 5 of the 9 D-only colonies had C present in 1 qPCR replicate.
 
 
 #### Proportion of D When Present in Mixture
 ```{r propD Histogram, warning=FALSE, cache=TRUE, fig.width=5}
 propD <- merged$propD[which(merged$propD > 0 & merged$propD < 1)]
 hist(propD, xlab = "Proportion of Clade D", ylab = "Number of Samples", main = "", col = "gray75")
-
-propDHist <- subset(merged, propD > 0 & propD < 1)
-propDHist$propD <- cut(propDHist$propD, breaks = 5)
-DCol=table(propDHist$Color.Morph, propDHist$propD)
-z <- with(subset(merged, propD==0), table(Color.Morph))
-o <- with(subset(merged, propD==1), table(Color.Morph))
-DCol <- cbind(z, DCol, o)
-par(mar=c(2, 4, 2, 0))
-bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
-        main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), 
-        axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
-axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4, 0.6, 0.8, "<1.0"))
-axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 ```
 
-```{r warning=FALSE, cache=TRUE, fig.width=5}
-propDHist <- subset(merged, propD > 0 & propD < 1)
-propDHist$propD <- cut(propDHist$propD, breaks = 5)
-DCol=table(propDHist$Color.Morph, propDHist$propD)
-z <- with(subset(merged, propD==0), table(Color.Morph))
-o <- with(subset(merged, propD==1), table(Color.Morph))
-DCol <- cbind(z, DCol, o)
-par(mar=c(2, 4, 2, 0))
-bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", 
-        main = "", col = c(alpha("sienna", 0.75), alpha("orange", 0.75)), 
-        axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
-axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0.0", 0.2, 0.4, 0.6, 0.8, "<1.0"))
-axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
-```
 
-### Color Morph by Reef Area
+### Color Morph per Reef Area
 ```{r ColorMorph~ReefArea}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
 results=table(Symcap$Color.Morph, Symcap$Reef.Area)
@@ -267,7 +242,7 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 ```
 
 
-### Color Morph by Bay Area
+### Color Morph per Bay Area
 ```{r Color~BayArea}
 results=table(merged$Color.Morph, merged$Bay.Area)
 prop.table(results, margin = 2)
@@ -275,7 +250,7 @@ chisq.test(results)
 ```
 
 
-### Color Morph by Reef ID
+### Color Morph per Reef ID
 ```{r ColorMorph~ReefID, warning=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Reef.ID)
 chisq.test(results)
@@ -324,7 +299,8 @@ mantel(col.dists~reef.dists)
 ```
 
 
-### Color Morph by Bay Area Adjusted for Depth
+### Color Morph per Bay Area Adjusted for Depth
+To discount the vertical spatial plane (depth), these results are adjusted to "assume" that all colonies were collected from the same depth, therefore considering simply the coordinate plane as the distributional influence on the resulting values.
 ```{r, results='hide'}
 merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
 dat <- aggregate(data.frame(prop=merged$Color), by=list(Reef.ID=merged$Reef.ID), FUN=mean, na.rm=T) 
@@ -372,7 +348,7 @@ mantel(col.dists~reef.dists)
 ```
 
 
-### Symbiont Community Composition by Bay Area
+### Symbiont Community Composition per Bay Area
 ```{r Mix~BayArea, warning=FALSE}
 results=table(Symcap$Mix, Symcap$Bay.Area)
 prop.table(results, margin = 2)
@@ -381,22 +357,22 @@ chisq.test(results)
 
 
 ## Non-Significant Differences
-### Dominant Symbiont by Reef Type
+### Dominant Symbiont per Reef Type
 ``` {r Dom~ReefType, echo=FALSE}
 results=table(Symcap$Dom, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-### Dominant Symbiont by Bay Area
+### Dominant Symbiont per Bay Area
 ```{r Dom~BayArea}
 results=table(Symcap$Dom, Symcap$Bay.Area)
 chisq.test(results)
 ```
 
 
-### Dominant Symbiont by Reef ID
-```{r Dom~ReefID, warning=FALSE, results='hide'}
+### Dominant Symbiont per Reef ID
+```{r Dom~ReefID, warning=FALSE}
 results=table(Symcap$Dom, Symcap$Reef.ID)
 chisq.test(results)
 ```
@@ -444,22 +420,13 @@ mantel(dom.dists~reef.dists)
 pval1 indicates that there is a positive correlation between distance and difference among reefs in terms of dominant symbiont clade. Reefs that are closer in proximity to each other are more similar in terms of symbiont dominance. A positive mantelr value indicates a positive correlation.
 
 #### Clustering of Similar Reefs
+Though insignificant differences resulted when investigating symbiont dominance across reefs, reefs closer in proximity appear more similar than reefs further apart. Clustering was tested here.
 ```{r, results='hide'}
 doms <- hclust(dom.dists)
 plot(doms, labels = XY$Reef.ID)
 
 a <- hclust(reef.dists*dom.dists)
 plot(a, labels = XY$Reef.ID)
-
-domsk <- pamk(data = dom.dists, critout = TRUE)
-domsk
-
-km <- kmeans(dom.dists, centers = 5)
-km
-df <- cbind(XY, km$cluster)
-km$cluster
-
-PlotOnStaticMap(KBMap, df$Latitude, df$Longitude, col="red", pch=as.character(km$cluster), lwd = 2)
 ```
 
 #### Dominant Symbiont Plots
@@ -561,7 +528,7 @@ apply(XY2, MARGIN=1, FUN=function(reef) {
 })
 ```
 
-##### Depth Adjustment for Color Morph and Dominant Symbiont
+#### Color Morph and Dominant Symbiont Interaction Plots
 A multinomial logistic regression was performed on the interaction of color morph and dominant symbiont to discount the influence of depth on spatial distribution. 
 ```{r, message=FALSE, results='hide'}
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
@@ -593,22 +560,11 @@ means <- lsmeans(model, specs = "Reef.ID")
 means
 pp <- fitted(model)
 
-depthmod <- multinom(ColDom ~ newDepth, merged)
-depthdat <- data.frame(newDepth = seq(0,12,0.5))
-depthpred <- predict(depthmod, newdata=depthdat, "probs")
-plot(NA, xlim=c(0,12), ylim=c(0,1))
-stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
-          ylim=c(0,1), xaxlab=depthdat$newDepth, xlab="Depth", ylab="Probability")
-legend("top", legend=c("Brown.C",  "Brown.D", "Orange.C","Orange.D"), pch=22,
-       pt.bg=c("burlywood4","burlywood3","darkorange3","darkorange"), inset=-0.3, xpd=NA, bty="n")
-
 newdat <- data.frame(Reef.ID = levels(merged$Reef.ID),
                    newDepth = mean(merged$newDepth, na.rm=T))
 pred <- predict(model, newdata = newdat, "probs")
 new <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
 XY4 <- merge(XY3, new, by="Reef.ID", all=T)
-
-
 
 PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 
@@ -678,7 +634,7 @@ mantel(dom.dists~reef.dists)
 ```
 
 
-##### Color and Dominant Symbiont by Bay Area
+##### Color and Dominant Symbiont per Bay Area
 When considering the effect of bay area on the interaction of color morph and dominant symbiont, the proportion of Brown colonies dominated by D increases as you move from the north to the south of the bay. The proportion increases almost 6x, yet the small number of colonies makes this non-compelling. 
 ```{r, ColDom~BayArea}
 Type=table(merged$ColDom, merged$Bay.Area)
@@ -687,30 +643,29 @@ chisq.test(Type)
 ```
 
 
-### Color Morph by Reef Type
+### Color Morph per Reef Type
 ```{r Color~ReefType, echo=FALSE}
 results=table(Symcap$Color.Morph, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-### Symbiont Community Composition by Reef Type
+### Symbiont Community Composition per Reef Type
 ```{r Mix~ReefType, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.Type)
 chisq.test(results)
 ```
 
 
-### Symbiont Community Composition by Reef ID
+### Symbiont Community Composition per Reef ID
 ```{r Mix~ReefID, warning=FALSE, echo=FALSE}
 results=table(Symcap$Mix, Symcap$Reef.ID)
 chisq.test(results)
 ```
 
 
-# Logistic Regression
-## Significant Effect
-### Dominant Symbiont by Depth
+# Symbiont Dominance and Color Morph Across Depths
+## Dominant Symbiont by Depth
 ```{r Dom~Depth, message=FALSE, warning=FALSE}
 merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
 Dom1 <- subset(merged, !is.na(newDepth) & !is.na(Dominant))
@@ -738,11 +693,10 @@ results=glm(Dominant~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
 ```
+Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m depth intervals when pooling all samples collected. Overlaid line indicates probability of a colony being D-dominated across depths.
 
-Bars indicate relative frequency of clade C vs. D dominance at 1m depth intervals when pooling all samples collected.
 
-
-### Mixture by Depth
+## Mixture by Depth
 ```{r Mix~Depth}
 merged$Mixture <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 1, 0)
 merged$Mixture2 <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 0, 1)
@@ -763,11 +717,10 @@ results=glm(Mixture~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Mixture Proportion")
 ```
+Bars indicate relative frequency of occurrence of Mixtures vs. Non-Mixtures at 1m depth intervals when pooling all samples collected. The overlaid line indicates the probability of a colony being a mixture across depths.
 
-Bars indicate relative frequency of Mixture vs. Non-Mixtures at 1m depth intervals when pooling all samples collected.
 
-
-### Color Morph by Depth
+## Color Morph by Depth
 ```{r ColorMorph~Depth, message=FALSE, warning=FALSE}
 merged$Color <- ifelse(merged$Color.Morph=="Orange", 1, 0)
 results=glm(Color~newDepth, family = "binomial", data = merged)
@@ -795,32 +748,11 @@ results=glm(Color2~newDepth, family = "binomial", data = merged)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
 ```
-
-Bars indicate relative frequency of Brown vs. Orange color morph dominance at 1m depth intervals when pooling all samples collected.
-
-```{r}
-merged$Color <- ifelse(merged$Color.Morph=="Orange", 0, 1)
-results=table(merged$Color, merged$DepthInt)
-results
-props <- prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6), lwd = 0.25)
-barplot(props[,1:11], col = c(alpha("orange", 0.45), alpha("sienna", 0.45)), 
-        xlab = "", ylab = "",
-        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
-par(lwd=1)
-legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.45), alpha("orange", 0.45)), inset = c(-.22, 0), xpd = NA)
-par(new = T)
-par(mar=c(4.2, 4, 2, 6))
-merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
-results=glm(Color2~newDepth, family = "binomial", data = merged)
-fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
-```
+Bars indicate relative frequency of Brown vs. Orange color morph dominance at 1m depth intervals when pooling all samples collected. The overlaid line indicates the probablity of a colony to be Orange across depths.
 
 
-# Two-Way ANOVA
-## Significant Interactive Effects
-### Dominant Symbiont by Color Morph and Reef Area
+# Color Morph and Dominant Symbiont Interaction
+## Dominant Symbiont per Color Morph and Reef Area
 ```{r Reef Area ANOVA}
 merged$Reef.Area <- ifelse(merged$Reef.Area!="Top", yes = "Slope", no = "Top")
 table(merged$Dom, merged$Color.Morph, merged$Reef.Area)
@@ -829,14 +761,13 @@ Anova(model, type = 2)
 ```
 
 
-###
 ```{r}
 model=aov(Dominant~newDepth*Bay.Area, data = merged)
 Anova(model, type = 2)
 ```
 
 
-### Dominant Symbiont by Color Morph and Depth
+## Dominant Symbiont per Color Morph and Depth
 Because an interactive effect of reef area and color morph was observed and slope is indicative of a depth gradient, the interaction between depth and color morph was tested here.
 ```{r Depth ANOVA, warning=FALSE}
 model1=lm(Dominant~Color.Morph*newDepth, data = merged)
@@ -844,7 +775,7 @@ Anova(model1, type = 2)
 ```
 
 
-#### Depth at which Orange switches from D to C Dominance
+### Depth at which Orange switches from D to C Dominance
 While brown was always C-dominated, orange was observed to switch from D to C dominance. The depth threshold at which this switch occurs was analyzed here.
 ```{r, warning=FALSE}
 threshdepth <- function(color) {
@@ -863,6 +794,44 @@ threshdepth <- function(color) {
   return(thresh)
 }
 sapply(levels(merged$Color.Morph), FUN=threshdepth)
+
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), 
+                 FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw.c
+
+manteltable = table(merged$Dom, merged$Color.Morph, merged$Reef.ID)
+nc <- aggregate(interaction(merged$Color.Morph, merged$Dom), 
+                by=list(merged$Reef.ID), FUN=table)
+nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
+XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
+
+merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
+model <- multinom(ColDom~newDepth+Reef.ID, merged)
+means <- lsmeans(model, specs = "Reef.ID")
+means
+pp <- fitted(model)
+
+depthmod <- multinom(ColDom ~ newDepth, merged)
+depthdat <- data.frame(newDepth = seq(0,12,0.5))
+depthpred <- predict(depthmod, newdata=depthdat, "probs")
+#plot(NA, xlim=c(0,12), ylim=c(0,1))
+stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
+          ylim=c(0,1), xaxlab=depthdat$newDepth, xlab="Depth", ylab="Probability")
+legend("top", legend=c("Brown.C",  "Brown.D", "Orange.C","Orange.D"), pch=22,
+       pt.bg=c("burlywood4","burlywood3","darkorange3","darkorange"), inset=-0.3, xpd=NA, bty="n")
 ```
 
 ```{r, warning=FALSE}
@@ -884,7 +853,7 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inse
 ```
 
 
-### Dominant Symbiont by Depth and Reef Type
+## Dominant Symbiont by Depth and Reef Type
 ```{r, warning=FALSE}
 model3=aov(Dominant2~newDepth*Reef.Type, data = merged)
 Anova(model3, type = 2)
@@ -907,7 +876,7 @@ legend("topright", legend=c("Patch", "Fringe"), fill=c("dodgerblue3", "brown1"),
 ```
 
 
-### Color Morph by Depth and Reef Type
+## Color Morph by Depth and Reef Type
 ```{r, warning=FALSE}
 model2=aov(Color~newDepth*Reef.Type, data = merged)
 Anova(model2, type = 2)
@@ -930,7 +899,7 @@ legend("topright", legend=c("Patch", "Fringe"), fill=c("dodgerblue3", "brown1"),
 ```
 
 
-#### Dominant Symbiont per Color Morph by Depth and Reef Type
+### Dominant Symbiont per Color Morph by Depth and Reef Type
 Because depth and reef type have an interactive effect on both color morph and dominant symbiont clade, the dominant symbiont per color morph at each reef type was visualized. 
 ```{r, warning=FALSE}
 df <- subset(merged, Reef.Type=="Patch")
@@ -974,7 +943,7 @@ mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
 ```
 
 
-### Dominant Symbiont by Depth and Reef ID
+## Dominant Symbiont by Depth and Reef ID
 ```{r, warning=FALSE}
 model2=aov(Dominant~newDepth*Reef.ID, data = merged)
 Anova(model2, type = 2)
@@ -1002,7 +971,7 @@ sapply(levels(merged$Reef.ID), FUN=domreef)
 On the y-axis, a value of 1 indicates D-dominance and a value of 0 indicates C-dominance.
 
 
-### Mixture by Depth and Reef ID
+## Mixture by Depth and Reef ID
 ```{r, warning=FALSE}
 merged$Mixture <- ifelse(!merged$Mix=="C" & !merged$Mix=="D", 1, 0)
 model4=aov(Mixture~newDepth*Reef.ID, data = merged)
@@ -1031,11 +1000,7 @@ On the y-axis, a value of 1 indicates a mixture and a value of 0 indicates singl
 
 
 # Figures
-## Orange and Brown Color Morph
-![](Color Photo.png)
-
-
-## Symbiont Community Composition by Dominant Symbiont 
+## Symbiont Community Composition per Dominant Symbiont 
 ```{r, warning=FALSE, results='hide'}
 results=table(Symcap$Mix, Symcap$Dom)
 chisq.test(results)
