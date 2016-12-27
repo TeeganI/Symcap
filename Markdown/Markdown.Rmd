@@ -761,6 +761,7 @@ Anova(model, type = 2)
 ```
 
 
+## Dominant Symbiont per Depth and Bay Area
 ```{r}
 model=aov(Dominant~newDepth*Bay.Area, data = merged)
 Anova(model, type = 2)
@@ -776,7 +777,7 @@ Anova(model1, type = 2)
 
 
 ### Depth at which Orange switches from D to C Dominance
-While brown was always C-dominated, orange was observed to switch from D to C dominance. The depth threshold at which this switch occurs was analyzed here.
+While brown was always C-dominated, orange was observed to switch from D to C dominance. The depth threshold where this switch occurred is represented here.
 ```{r, warning=FALSE}
 threshdepth <- function(color) {
   df <- subset(merged, Color.Morph==color)
