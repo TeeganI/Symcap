@@ -14,6 +14,10 @@ ti$TI <- ifelse(ti$TI=="Orange", "o", "b")
 
 # merge data
 df <- merge(merge(merge(rc, rrw, by="Colony"), ti, by="Colony"), cw, by="Colony")
+df$RC <- ifelse(df$RC=="o", "Orange", "Brown")
+df$RRW <- ifelse(df$RRW=="o", "Orange", "Brown")
+df$TI <- ifelse(df$TI=="o", "Orange", "Brown")
+df$CW <- ifelse(df$CW=="o", "Orange", "Brown")
 
 # calculate percent agreement, pairwise combinations
 #  Vector source for column combinations
