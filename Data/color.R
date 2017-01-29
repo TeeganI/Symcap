@@ -1,8 +1,8 @@
-# color calling
-
 # import each person's data
 rc <- read.csv("Data/Collection Data/RC_color.csv", header=F)
 colnames(rc) <- c("Colony", "RC")
+jk <- read.csv("Data/Collection Data/JK_color.csv", header=F)
+colnames(jk) <- c("Colony", "JK")
 cw <- read.csv("Data/Collection Data/CW_color.csv", header=F)
 colnames(cw) <- c("Colony", "CW")
 rrw <- read.csv("Data/Collection Data/RRW_color.csv", header=F)
@@ -13,11 +13,12 @@ colnames(ti) <- c("Colony", "TI")
 ti$TI <- ifelse(ti$TI=="Orange", "o", "b")
 
 # merge data
-df <- merge(merge(merge(rc, rrw, by="Colony"), ti, by="Colony"), cw, by="Colony")
+df <- merge(merge(merge(merge(rc, rrw, by="Colony"), ti, by="Colony"), cw, by="Colony"), jk, by="Colony")
 df$RC <- ifelse(df$RC=="o", "Orange", "Brown")
 df$RRW <- ifelse(df$RRW=="o", "Orange", "Brown")
 df$TI <- ifelse(df$TI=="o", "Orange", "Brown")
 df$CW <- ifelse(df$CW=="o", "Orange", "Brown")
+df$JK <- ifelse(df$JK=="o", "Orange", "Brown")
 
 # calculate percent agreement, pairwise combinations
 #  Vector source for column combinations
@@ -33,10 +34,15 @@ rownames(out) <- n
 out/nrow(df)
 
 # calculate percent unanimous calls among all observers
-agree <- ifelse(df$RC==df$RRW & df$RC==df$TI & df$RC==df$CW, "all agree", "disagree")
+agree <- ifelse(df$RC==df$RRW & df$RC==df$TI & df$RC==df$CW & df$RC==df$JK, "all agree", "disagree")
 prop.table(table(agree))
 
 # calculate number of agreements per colony
-nag <- apply(df[,-1], 1, function(x) max(table(x)))
+df$NAG <- apply(df[,-1], 1, function(x) max(table(x)))
 nag
 table(nag)
+prop.table(table(nag))
+
+# merge with majority's opinion
+Majority <- read.csv("Data/Collection Data/Majority.csv", header = F)
+df <- merge(df, Majority, by="Colony")
