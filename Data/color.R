@@ -44,5 +44,5 @@ table(nag)
 prop.table(table(nag))
 
 # merge with majority's opinion
-Majority <- read.csv("Data/Collection Data/Majority.csv", header = F)
+Majority <- read.csv("Data/Collection Data/Majority.csv", header = T)
 df <- merge(df, Majority, by="Colony")
