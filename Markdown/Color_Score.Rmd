@@ -248,6 +248,23 @@ legend("topright", legend=c("3 Agreements", "4 Agreements", "5 Agreements"), fil
 ```
 
 
+#Color Morph Uncertainty Per Symbiont Proportion
+```{r}
+merged$PropInt <- cut(merged$propD, breaks = 20)
+results=table(df$NAG, merged$PropInt)
+results
+props <- prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6), lwd = 0.25)
+barplot(props, col = c("gray10", "gray50", "gray100"), 
+        xlab = "Proportion of D", ylab = "Color Morph Uncertainty",
+        space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+par(lwd=1)
+legend("topright", legend=c("3 Agreements", "4 Agreements", "5 Agreements"), fill=c("gray10", "gray50", "gray100"), inset = c(-.22, 0), xpd = NA)
+par(new = T)
+par(mar=c(4.2, 4, 2, 6))
+```
+
+
 # Color Morph Per Reef ID
 ```{r}
 results=table(Symcap$Color.Morph, Symcap$Reef.ID)
@@ -261,6 +278,17 @@ prop.table(results, margin = 2)
 results=table(df$NAG, Symcap$Reef.ID)
 chisq.test(results)
 prop.table(results, margin = 2)
+```
+
+
+# Color Morph Uncertainty per Color Morph
+```{r}
+results=table(df$NAG, Symcap$Color.Morph)
+chisq.test(results)
+prop.table(results, margin = 2)
+par(mar=c(4, 4, 2, 6))
+barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray100"), xlab = "Color Morph", ylab = "Color Morph Uncertainty")
+legend("topright", legend=c("3 Agreements", "4 Agreements", "5 Agreements"), fill=c("gray10", "gray50", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
 
