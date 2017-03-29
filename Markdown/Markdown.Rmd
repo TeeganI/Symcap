@@ -1,7 +1,7 @@
----
+0---
 title: "Symcap"
 author: "Teegan Innis"
-date: "December 29, 2016"
+date: "March 9, 2017"
 output: 
   html_document:
     toc: yes
@@ -14,7 +14,9 @@ output:
 # Project Summary
 This project aimed to look at the spatial variability of color morph and *Symbiodinium* clades C and D present in the Kane'ohe Bay, O'ahu, Hawai'i population of Montipora capitata. We investigated the distributions at scales ranging from location within the bay to location on an individual reef. We also looked at differences among reef types (fringing vs. patch) and depths. Heterogeneous mixtures of symbiont clades were considered in the analysis for spatial patterns. By investigating spatial variability of *Symbiodinium*, we furthered the understanding of potential stress-response in Kane'ohe Bay.
 
-```{r Library Packages Needed, warning=FALSE, message=FALSE, include=FALSE}
+
+# Library Packages
+```{r Library Packages Needed, warning=FALSE, message=FALSE}
 knitr::opts_knit$set(root.dir = normalizePath(".."))
 # setwd("~/Symcap") #This will not work on other people's computers and you should not need this - Rproj automatically sets wd to root of repository
 # I don't thing all of these packages are actually being used in the code...
@@ -44,13 +46,15 @@ library(mlogit)
 ```
 
 
-# Import Data
-```{r Import Data, warning=FALSE, message=FALSE}
 # Import sample metadata
+```{r}
 Coral_Data <- read.csv("Data/Collection Data/Coral_Collection.csv")
 Coral_Data$Depth..m. <- as.numeric(as.character(Coral_Data$Depth..m.))
+```
+
 
 # Import qPCR data
+```{r}
 source_url("https://raw.githubusercontent.com/jrcunning/steponeR/master/steponeR.R")
 Mcap.plates <- list.files(path = "Data/qPCR_data", pattern = "txt$", full.names = T)
 Mcap <- steponeR(files = Mcap.plates, delim="\t",
@@ -58,57 +62,111 @@ Mcap <- steponeR(files = Mcap.plates, delim="\t",
                  fluor.norm = list(C=2.26827, D=0), 
                  copy.number=list(C=33, D=3))
 Mcap <- Mcap$result
+```
+
+
 ## Remove positive and negative controls from qPCR data
+```{r}
 Mcap <- Mcap[grep("+", Mcap$Sample.Name, fixed=T, invert = T), ]
 Mcap <- Mcap[grep("NTC", Mcap$Sample.Name, fixed = T, invert = T), ]
 Mcap <- Mcap[grep("PCT", Mcap$Sample.Name, fixed = T, invert = T), ]
+```
+
+
 ## Change "Sample.Name" column to "Colony"
+```{r}
 colnames(Mcap)[which(colnames(Mcap)=="Sample.Name")] <- "Colony"
+```
+
+
 ## Filter out detections without two technical replicates
+```{r}
 Mcap$fail <- ifelse(Mcap$C.reps < 2 & Mcap$D.reps < 2, TRUE, FALSE)
 fails <- Mcap[Mcap$fail==TRUE, ]
 Mcap <- Mcap[which(Mcap$fail==FALSE),]
+```
+
+
 ## Set C:D ratio to -Inf (when only D) and Inf (when only C)
+```{r}
 Mcap$C.D[which(Mcap$C.reps<2)] <- -Inf
 Mcap$C.D[which(Mcap$D.reps<2)] <- Inf
+```
+
+
 ## Order qPCR data by Colony
+```{r}
 Mcap <- Mcap[with(Mcap, order(Colony)), ]
+```
+
+
 ## Calculate proportion C and proportion D
+```{r}
 Mcap$propC <- Mcap$C.D / (Mcap$C.D+1)
 Mcap$propD <- 1-Mcap$propC
 Mcap$propD[which(Mcap$C.D==-Inf)] <-1
 Mcap$propC[which(Mcap$C.D==-Inf)] <-0
 Mcap$propD[which(Mcap$C.D==Inf)] <-0
 Mcap$propC[which(Mcap$C.D==Inf)] <-1
+```
+
+
 ## Categorize each sample as C-dominated or D-dominated
+```{r}
 Mcap$Dom <- ifelse(Mcap$propC>Mcap$propD, "C", "D")
+```
+
 
 # Merge sample metadata with qPCR data
+```{r}
 Symcap<-merge(Coral_Data, Mcap, by="Colony", all=T)
 Symcap <- Symcap[with(Symcap, order(Colony)), ]
+```
+
+
 ## Define category for symbiont mixture
+```{r}
 Symcap$Mix <- factor(ifelse(Symcap$propC>Symcap$propD, ifelse(Symcap$propD!=0, "CD", "C"), ifelse(Symcap$propD>Symcap$propC, ifelse(Symcap$propC!=0, "DC", "D"), NA)), levels = c("C", "CD", "DC", "D"))
+```
+
+
 ## Define reef.area category as either Top or Slope
+```{r}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
+```
+
 
 # Import color data from each observer
+```{r}
 colscores <- read.csv("Data/Collection Data/Color_Scores.csv")
+```
+
+
 ## Determine color scores by majority rule, and number of agreements
+```{r}
 colscores$majority <- apply(colscores[,-1], 1, function(x) names(table(x))[which.max(table(x))])
 colscores$n.agree <- apply(colscores[,-c(1,7)], 1, function(x) max(table(x)))
+```
+
+
 ## Set which set of color scores will be used in analysis (=majority)
+```{r}
 Symcap <- merge(Symcap, colscores[,c("Colony","majority","n.agree")], all=T)
 Symcap$Color.Morph <- Symcap$majority
+```
 
 
 ## Change Bay Area for 18, 26 and F7-18
-# PROVIDE RATIONALE FOR MAKING THESE CHANGES
+```{r}
 Symcap$Bay.Area[which(Symcap$Reef.ID=="26")] <- "Central"
 Symcap$Bay.Area[which(Symcap$Reef.ID=="18")] <- "Southern"
 Symcap$Bay.Area[which(Symcap$Reef.ID=="F7-18")] <- "Southern"
+```
 
-# Adjust Depth by Mean Sea Level at time of collection
-#To account for the influence of tides, depth was adjusted according to the differences in mean sea level from the recorded sea level on each collection day to the nearest 6-minute interval. Mean sea level was obtained from NOAA daily tide tables for Moku o Lo'e.
+
+## Adjust Depth by Mean Sea Level
+To account for the influence of tides, depth was adjusted according to the differences in mean sea level from the recorded sea level on each collection day to the nearest 6-minute interval. Mean sea level was obtained from NOAA daily tide tables for Moku o Lo'e.
+```{r Adjust Depth, warning=FALSE, message=FALSE, results='hide'}
 JuneTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160601-20160630.csv")
 JulyTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160701-20160731.csv")
 AugustTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160801-20160812.csv")
@@ -150,8 +208,8 @@ Symcap$Time.r <- Round6(Symcap$Time)
 Tide$Time.r <- Tide$Time
 merged<-merge(Symcap, Tide, by="Time.r", all.x=T)
 merged$newDepth <- merged$Depth..m.- merged$TideHT
-
 ```
+
 
 # Figure 1: Coral Collection Map
 Collection sites represented on this map indicate the 9 fringe and 16 patch reef sites for a total of 25 collection reefs. In total, 707 colonies were collected for the analysis.
