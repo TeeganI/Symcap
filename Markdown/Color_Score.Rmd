@@ -151,19 +151,11 @@ df$NAG <- apply(df[,-c(1,7)], 1, function(x) max(table(x)))
 
 # Set Color Morph Column to New Data Frame Column
 ```{r}
-# I THINK THIS IS WHERE YOUR CODE WENT WRONG -- HERE YOU SET THE SYMCAP$COLOR.MORPH COLUMN TO EQUAL THE COLOR MAJORITY COLUMN, BUT THE COLONIES (ROWS) WERE NOT IN THE SAME ORDER
-#Symcap <- subset(Symcap, Colony!="7")
-#Symcap$Color.Morph <- df$Majority
-#merged <- subset(merged, Colony!="7")
-#merged$Color.Morph <- df$Majority
-
-# WHAT YOU NEEDED TO DO IS MERGE THE DATA FRAMES SO THE COLONIES MATCH UP
 Symcap <- merge(Symcap, df[,c("Colony", "majority", "NAG")], all=T)
 Symcap$Color.Morph <- Symcap$majority
 merged <- merge(merged, df[,c("Colony", "majority", "NAG")], all=T)
 merged$Color.Morph <- merged$majority
 
-# WHY IS THERE A COLONY 7??
 Symcap <- subset(Symcap, Colony!="7")
 merged <- subset(merged, Colony!="7")
 ```
@@ -184,8 +176,6 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 ## Color Morph Uncertainty Per Reef Area
 ```{r}
 Symcap$Reef.Area <- ifelse(Symcap$Reef.Area!="Top", yes = "Slope", no = "Top")
-# HERE IS ALSO WHERE THINGS WENT WRONG - YOU WERE USING NAG FROM df BUT REEF.AREA FROM SYMCAP -- COLONY ROWS ARE NOT THE SAME IN THESE TWO DATA FRAMES! NEED TO MERGE (NOW DONE ABOVE) AND WORK WITH COLUMNS FROM THE SAME DATA FRAME!
-#results=table(df$NAG, Symcap$Reef.Area)
 results=table(Symcap$NAG, Symcap$Reef.Area)
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -208,7 +198,6 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 
 ## Color Morph Uncertainty Per Bay Area
 ```{r}
-#results=table(df$NAG, Symcap$Bay.Area)  # SAME PROBLEM HERE...
 results=table(Symcap$NAG, Symcap$Bay.Area)
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -235,7 +224,6 @@ legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.
 
 ## Color Morph Uncertainty Per Dominant Symbiont
 ```{r}
-#results=table(df$NAG, Symcap$Dom) #SAME PROBLEM HERE
 results=table(Symcap$NAG, Symcap$Dom)
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -258,7 +246,6 @@ legend("topright", legend=c("Brown", "Orange"), fill=c("gray10", "gray100"), ins
 
 ## Color Morph Uncertainty Per Symbiont Mixture
 ```{r}
-#results=table(df$NAG, Symcap$Mix)  #SAME PROBLEM HERE
 results=table(Symcap$NAG, Symcap$Mix)
 chisq.test(results)
 prop.table(results, margin = 2)
@@ -271,7 +258,6 @@ legend("topright", legend=c("3 Agreements", "4 Agreements", "5 Agreements"), fil
 #Color Morph Uncertainty Per Symbiont Proportion
 ```{r}
 merged$PropInt <- cut(merged$propD, breaks = 10)
-#results=table(df$NAG, merged$PropInt) #SAME PROB HERE
 results=table(merged$NAG, merged$PropInt)
 results
 props <- prop.table(results, margin = 2)
@@ -358,7 +344,6 @@ legend("topright", legend=c("3 Agreements", "4 Agreements", "5 Agreements"), fil
 
 # Dominant Symbiont by Color Morph and Depth
 ```{r}
-
 df <- subset(merged, merged$Color.Morph=="Orange")
 results=glm(factor(Dom)~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
