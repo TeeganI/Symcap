@@ -114,7 +114,7 @@ colscores$n.agree <- apply(colscores[,-c(1,7)], 1, function(x) max(table(x)))
 
 # Set which set of color scores will be used in analysis (=majority)
 Symcap <- merge(Symcap, colscores[,c("Colony","majority","n.agree")], all=T)
-Symcap$Color.Morph <- Symcap$majority
+Symcap$Color.Morph <- factor(Symcap$majority)
 ```
 
 
@@ -303,7 +303,7 @@ anova(results, test = "Chisq")
 merged$DepthInt <- cut(merged$newDepth, breaks = 0:13)
 merged$Dominant2 <- ifelse(merged$Dom=="C", 1, 0)
 results=table(merged$Dominant2, merged$DepthInt)
-results
+
 props <- prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6), lwd = 0.25)
 barplot(props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
@@ -314,8 +314,11 @@ legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 
 par(new = T)
 par(mar=c(4.2, 4, 2, 6))
 results=glm(Dominant~newDepth, family = "binomial", data = merged)
-fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.01)), type = "response")
+plot(fitted~seq(0,11,0.01), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
+
+# Depth at which probability of C vs. D dominance is 50/50
+seq(0,11,0.01)[which.min(abs(fitted-0.5))]
 ```
 
 Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m depth intervals when pooling all samples collected. Overlaid line indicates probability of a colony being D-dominated across depths.
@@ -329,7 +332,7 @@ anova(results, test = "Chisq")
 Color <- subset(merged, !is.na(newDepth) & !is.na(Color))
 
 results=table(merged$Color, merged$DepthInt)
-results
+
 props <- prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6), lwd = 0.25)
 barplot(props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
@@ -341,8 +344,11 @@ par(new = T)
 par(mar=c(4.2, 4, 2, 6))
 merged$Color2 <- ifelse(merged$Color=="0", 1, 0)
 results=glm(Color2~newDepth, family = "binomial", data = merged)
-fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
-plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
+fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.01)), type = "response")
+plot(fitted~seq(0,11,0.01), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
+
+# Depth at which probability of orange or brown is 50/50
+seq(0,11,0.01)[which.min(abs(fitted-0.5))]
 ```
 Bars indicate relative frequency of brown vs. orange color morph dominance at 1m depth intervals when pooling all samples collected. The overlaid line indicates the probablity of a colony to be orange across depths.
 
@@ -351,53 +357,8 @@ Bars indicate relative frequency of brown vs. orange color morph dominance at 1m
 ## Depth at which Orange switches from D to C Dominance
 While brown colonies were always more likely C-dominated, orange colonies were observed to switch from D to C dominance. The depth threshold where this switch occurred is represented here.
 ```{r, warning=FALSE}
-threshdepth <- function(color) {
-  df <- subset(merged, Color.Morph==color)
-  plot(df$Dominant2~df$newDepth, xlab="Depth (m)", ylab = "Probability of Clade C Symbiont",
-       main=color)
-  abline(h = 0.5, lty=2)
-  results=glm(Dominant2~newDepth, family = "binomial", data = df)
-  pval <- data.frame(coef(summary(results)))$`Pr...z..`[2]
-  mtext(side=3, text=pval)
-  newdata <- list(newDepth=seq(0,11,0.01))
-  fitted <- predict(results, newdata = newdata, type = "response")
-  lines(fitted ~ seq(0,11,0.01))
-  thresh <- ifelse(pval < 0.05,
-                   newdata$newDepth[which(diff(sign(fitted - 0.5))!=0)], NA)
-  return(thresh)
-}
-sapply(levels(merged$Color.Morph), FUN=threshdepth)
-
-merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
-dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), 
-                 FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
-
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw.c
-
-manteltable = table(merged$Dom, merged$Color.Morph, merged$Reef.ID)
-nc <- aggregate(interaction(merged$Color.Morph, merged$Dom), 
-                by=list(merged$Reef.ID), FUN=table)
-nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
-XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
-
-merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
-model <- multinom(ColDom~newDepth+Reef.ID, merged)
-means <- lsmeans(model, specs = "Reef.ID")
-means
-```
-
-```{r, warning=FALSE}
+# Probability of C vs. D dominance in Orange and Brown colonies across Depth
+# Orange colonies
 df <- subset(merged, Color.Morph=="Orange")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
@@ -405,6 +366,14 @@ par(mar=c(4, 4, 2, 6))
 fitted <- predict(results, newdata = newdata, type = "response")
 plot(fitted ~ seq(0,11,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="", ylab="", axisnames=FALSE)
 abline(h = 0.5, lty=2)
+# Point at which probability of C or D dominance is 50/50
+seq(0,11,0.01)[which.min(abs(fitted-0.5))]
+# Probability of D-dominance at 1m
+fitted[seq(0,11,0.01)==1]
+# Probability of D-dominance at 10m
+fitted[seq(0,11,0.01)==11]
+
+# Brown colonies
 df <- subset(merged, Color.Morph=="Brown")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
@@ -413,8 +382,11 @@ lines(fitted~seq(0,11,0.01), col="sienna", lwd=3)
 mtext(side = 1, text = "Depth (m)", line = 3, cex = 1)
 mtext(side = 2, text = "Probability of Clade D Symbiont", line = 3, cex = 1)
 legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(-.22, 0), xpd = NA)
+# Probability of D-dominance at 1m
+fitted[seq(0,11,0.01)==1]
+# Probability of D-dominance at 10m
+fitted[seq(0,11,0.01)==10]
 ```
-
 
 # Figure 5: Depth Influence on Dominant Symbiont and Color Morph
 ```{r 3-panel Depth, message=FALSE, warning=FALSE, results='hide', fig.height=6, fig.width=3.1}
@@ -468,6 +440,40 @@ newdata <- list(newDepth=seq(0,11,0.01))
 fitted <- predict(results, newdata = newdata, type = "response")
 lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
 legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(0, 0), xpd = NA)
+```
+
+
+
+
+# Everything below here needs better commenting and organization.... very hard to follow!
+```{r HELP_COMMENT_ME!!!!!}
+merged$Dominant <- ifelse(merged$Dom=="C", 0, 1)
+dat <- aggregate(data.frame(prop=merged$Dominant), by=list(Reef.ID=merged$Reef.ID), 
+                 FUN=mean, na.rm=T) #prop D/reef
+mod <- glm(Dominant ~ newDepth + Reef.ID, data=merged)
+mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=merged)
+library(lsmeans)
+lsm <- lsmeans(mod, specs="Reef.ID")
+lsm2 <- lsmeans(mod2, specs="Reef.ID")
+res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
+res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
+colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
+
+XY2 <- merge(XY, res, by = "Reef.ID")
+XY2$d.adj <- 1-XY2$c.adj
+XY2$d.adj.int <- 1-XY2$c.adj.int
+XY2$raw.d <- 1-XY2$raw.c
+
+manteltable = table(merged$Dom, merged$Color.Morph, merged$Reef.ID)
+nc <- aggregate(interaction(merged$Color.Morph, merged$Dom), 
+                by=list(merged$Reef.ID), FUN=table)
+nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
+XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
+
+merged$ColDom <- interaction(merged$Color.Morph, merged$Dom)
+model <- multinom(ColDom~newDepth+Reef.ID, na.omit(merged))
+means <- lsmeans(model, specs = "Reef.ID")
+means
 ```
 
 
