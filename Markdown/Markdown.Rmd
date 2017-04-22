@@ -231,7 +231,7 @@ prop.table(results, margin = 2)
 ### Figure 3: Symbiont Community Composition per Dominant Symbiont 
 ```{r}
 par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), xlab = "Dominant Symbiont", ylab = "Symbiont Mixture Proportion")
+barplot(prop.table(results, margin = 2), col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), xlab = "Dominant Symbiont", ylab = "Proportion of Colonies")
 legend("topright", legend=c("C", "CD", "DC", "D"), fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), inset = c(-.2, 0), xpd = NA)
 ```
 
