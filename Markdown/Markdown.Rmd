@@ -175,6 +175,7 @@ Symcap$Time.r <- Round6(Symcap$Time)
 Tide$Time.r <- Tide$Time
 Symcap<-merge(Symcap, Tide, by="Time.r", all.x=T)
 Symcap$newDepth <- Symcap$Depth..m.- Symcap$TideHT
+Symcap$DepthInt <- cut(Symcap$newDepth, breaks = 0:13)
 ```
 
 # Analyze color morph data
@@ -193,10 +194,10 @@ legend("bottomright", inset=0.05, legend=c("Brown.C", "Brown.D","Orange.C",  "Or
        fill=c("burlywood4","burlywood3","darkorange3","darkorange"))
 
 # Filter out low confidence color assignments
-Symcap <- Symcap[which(Symcap$n.agree > 3), ]
+Symcap.f <- Symcap[which(Symcap$n.agree > 3), ]
 
 # Plot probability of symbiont-color groups
-depthmod <- multinom(ColDom ~ newDepth, Symcap)
+depthmod <- multinom(ColDom ~ newDepth, Symcap.f)
 depthdat <- data.frame(newDepth = seq(0,12,0.5))
 depthpred <- predict(depthmod, newdata=depthdat, "probs")
 stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
@@ -238,23 +239,6 @@ rect(-157.87, 21.41, -157.75, 21.52)
 box()
 ```
 
-# Color agreement
-```{r col_agreement}
-Symcap$unan <- ifelse(Symcap$n.agree==5, T, F)
-Symcap$only3 <- ifelse(Symcap$n.agree==3, T, F)
-mod <- glm(cbind(n.agree, 5-n.agree) ~ newDepth * Color.Morph, family="binomial", Symcap)
-anova(mod, test = "Chisq")
-newdat <- data.frame(newDepth=seq(1,10,0.1), Color.Morph="Orange")
-plot(newdat$newDepth, predict(mod, newdata=newdat, type="response"), ylim=c(0,1), col="orange", type="l", lwd=2)
-newdat <- data.frame(newDepth=seq(1,10,0.1), Color.Morph="Brown")
-lines(newdat$newDepth, predict(mod, newdata=newdat, type="response"), col="brown", lwd=2)
-
-par(mfrow=c(2,1))
-plot(n.agree ~ newDepth, data=subset(Symcap, Color.Morph=="Orange"), col="orange")
-plot(n.agree ~ newDepth, data=subset(Symcap, Color.Morph=="Brown"), col="brown")
-```
-
-
 # Symbiont and Color Morph Communities
 ## Symbiont Dominance
 ```{r}
@@ -285,16 +269,14 @@ legend("topright", legend=c("C", "CD", "DC", "D"), fill=c(alpha("blue", 0.75), a
 
 When looking at D-only colonies, the Ct values are on the higher end of the spectrum (35 or greater) indicating poor amplification and the potential for C amplification being pushed back in the cycle. This is supported by the fact that 5 of the 9 D-only colonies had C present in 1 qPCR replicate.
 
-
-## Color Morph Dominance
+## Color Morph Prevalence
 ```{r}
-table(Symcap$Color.Morph)
+table(Symcap.f$Color.Morph)
 ```
-
 
 ## Dominant Symbiont per Color Morph
 ```{r Dom~ColorMorph}
-results=table(Symcap$Dom, Symcap$Color.Morph)
+results=table(Symcap.f$Dom, Symcap.f$Color.Morph)
 results
 mosaicplot(results, xlab = "Dominant Symbiont", ylab = "Color Morph", main = "")
 chisq.test(results)
@@ -304,34 +286,15 @@ barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "C
 legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
-
-## Symbiont Community Composition per Color Morph
-```{r Mix~ColorMorph, warning=FALSE}
-results=table(Symcap$Mix, Symcap$Color.Morph)
-chisq.test(results)
-prop.table(results, margin = 2)
-par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray50", "gray85", "gray100"), xlab = "Color Morph", ylab = "Symbiont Community Composition")
-legend("topright", legend=c("C", "CD", "DC", "D"), fill=c("gray10", "gray50", "gray85", "gray100"), inset = c(-.2, 0), xpd = NA)
-```
-
-
-### Proportion of D When Present in Mixture
-```{r propD Histogram, warning=FALSE, cache=TRUE, fig.width=5}
-propD <- Symcap$propD[which(Symcap$propD > 0 & Symcap$propD < 1)]
-hist(propD, xlab = "Proportion of Clade D", ylab = "Number of Samples", main = "", col = "gray75")
-```
-
-
 ### Figure 4: Symbiont Community Composition and Color Morph
 ```{r, DHistogram}
-propD <- Symcap$propD[which(Symcap$propD > 0 & Symcap$propD < 1)]
+propD <- Symcap.f$propD[which(Symcap.f$propD > 0 & Symcap.f$propD < 1)]
 
-propDHist <- subset(Symcap, propD > 0 & propD < 1)
+propDHist <- subset(Symcap.f, propD > 0 & propD < 1)
 propDHist$propD <- cut(propDHist$propD, breaks = 5)
 DCol=table(propDHist$Color.Morph, propDHist$propD)
-z <- with(subset(Symcap, propD==0), table(Color.Morph))
-o <- with(subset(Symcap, propD==1), table(Color.Morph))
+z <- with(subset(Symcap.f, propD==0), table(Color.Morph))
+o <- with(subset(Symcap.f, propD==1), table(Color.Morph))
 DCol <- cbind(z, DCol, o)
 par(mar=c(4, 4, 2, 0))
 bars <- barplot(DCol, xlab = "Clade D Proportion", ylab = "Number of Samples", main = "", col = c(alpha("sienna", 0.55), alpha("orange", 0.55)), axisnames = FALSE, space = c(0,0.3,0,0,0,0,0.3))
@@ -339,8 +302,13 @@ axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0%", "20%", "4
 axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 ```
 
+# Overall prevalence of color-symbiont combinations
+```{r}
+prop.table(table(Symcap.f$ColDom))
+```
 
-# Symbiont and Color Morph Communities Across Depths
+
+# Analyzing depth gradients in symbiosis and color
 ## Dominant Symbiont by Depth
 ```{r Dom~Depth, message=FALSE, warning=FALSE}
 Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
@@ -374,12 +342,12 @@ Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m d
 
 ## Color Morph by Depth
 ```{r ColorMorph~Depth, message=FALSE, warning=FALSE}
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 0, 1)
-results=glm(Color~newDepth, family = "binomial", data = Symcap)
+Symcap.f$Color <- ifelse(Symcap.f$Color.Morph=="Orange", 0, 1)
+results=glm(Color~newDepth, family = "binomial", data = Symcap.f)
 anova(results, test = "Chisq")
-Color <- subset(Symcap, !is.na(newDepth) & !is.na(Color))
+Color <- subset(Symcap.f, !is.na(newDepth) & !is.na(Color))
 
-results=table(Symcap$Color, Symcap$DepthInt)
+results=table(Symcap.f$Color, Symcap.f$DepthInt)
 
 props <- prop.table(results, margin = 2)
 par(mar=c(4, 4, 2, 6), lwd = 0.25)
@@ -390,8 +358,8 @@ par(lwd=1)
 legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(-.22, 0), xpd = NA)
 par(new = T)
 par(mar=c(4.2, 4, 2, 6))
-Symcap$Color2 <- ifelse(Symcap$Color=="0", 1, 0)
-results=glm(Color2~newDepth, family = "binomial", data = Symcap)
+Symcap.f$Color2 <- ifelse(Symcap.f$Color=="0", 1, 0)
+results=glm(Color2~newDepth, family = "binomial", data = Symcap.f)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.01)), type = "response")
 plot(fitted~seq(0,11,0.01), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
 
@@ -407,7 +375,8 @@ While brown colonies were always more likely C-dominated, orange colonies were o
 ```{r, warning=FALSE}
 # Probability of C vs. D dominance in Orange and Brown colonies across Depth
 # Orange colonies
-df <- subset(Symcap, Color.Morph=="Orange")
+Symcap.f$Dominant <- ifelse(Symcap.f$Dom=="C", 0, 1)
+df <- subset(Symcap.f, Color.Morph=="Orange")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
 par(mar=c(4, 4, 2, 6))
@@ -422,7 +391,7 @@ fitted[seq(0,11,0.01)==1]
 fitted[seq(0,11,0.01)==11]
 
 # Brown colonies
-df <- subset(Symcap, Color.Morph=="Brown")
+df <- subset(Symcap.f, Color.Morph=="Brown")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
 fitted <- predict(results, newdata = newdata, type = "response")
@@ -440,7 +409,6 @@ fitted[seq(0,11,0.01)==10]
 ```{r 3-panel Depth, message=FALSE, warning=FALSE, results='hide', fig.height=6, fig.width=3.1}
 par(mfrow=c(3,1))
 
-Symcap$DepthInt <- cut(Symcap$newDepth, breaks = 0:13)
 Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
 Symcap$Dominant2 <- ifelse(Symcap$Dom=="C", 1, 0)
 results=table(Symcap$Dominant2, Symcap$DepthInt)
@@ -458,8 +426,10 @@ results=glm(Dominant~newDepth, family = "binomial", data = Symcap)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="Probability of D-Dominance")
 
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 0, 1)
-results=table(Symcap$Color, Symcap$DepthInt)
+Symcap.f$Dominant <- ifelse(Symcap.f$Dom=="C", 0, 1)
+Symcap.f$Dominant2 <- ifelse(Symcap.f$Dom=="C", 1, 0)
+Symcap.f$Color <- ifelse(Symcap.f$Color.Morph=="Orange", 0, 1)
+results=table(Symcap.f$Color, Symcap.f$DepthInt)
 results
 props <- prop.table(results, margin = 2)
 par(mar=c(3, 4, 1, 6), lwd = 0.25)
@@ -470,19 +440,19 @@ par(lwd=1)
 legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(0, 0), xpd = NA)
 par(new = T)
 par(mar=c(3.1, 4, 1, 6))
-Symcap$Color2 <- ifelse(Symcap$Color=="0", 1, 0)
-results=glm(Color2~newDepth, family = "binomial", data = Symcap)
+Symcap.f$Color2 <- ifelse(Symcap.f$Color=="0", 1, 0)
+results=glm(Color2~newDepth, family = "binomial", data = Symcap.f)
 fitted <- predict(results, newdata = list(newDepth=seq(0,11,0.1)), type = "response")
 plot(fitted~seq(0,11,0.1), xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="")
 
-df <- subset(Symcap, Color.Morph=="Orange")
+df <- subset(Symcap.f, Color.Morph=="Orange")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
 par(mar=c(4, 4, 0, 6))
 fitted <- predict(results, newdata = newdata, type = "response")
 plot(fitted ~ seq(0,11,0.01), ylim = c(0,1), type="l", col="orange", lwd=3, xlab="Depth (m)", ylab="Probabilty of D-Dominance", axisnames=FALSE, xaxs = "i", yaxs = "i")
 abline(h = 0.5, lty=2)
-df <- subset(Symcap, Color.Morph=="Brown")
+df <- subset(Symcap.f, Color.Morph=="Brown")
 results=glm(Dominant~newDepth, family = "binomial", data = df)
 newdata <- list(newDepth=seq(0,11,0.01))
 fitted <- predict(results, newdata = newdata, type = "response")
@@ -490,301 +460,72 @@ lines(fitted~seq(0, 11, 0.01), col="sienna", lwd=3)
 legend("topright", legend=c("Brown", "Orange"), fill=c("sienna", "orange"), inset = c(0, 0), xpd = NA)
 ```
 
-
-
-
-# Everything below here needs better commenting and organization.... very hard to follow!
+# Influence of location
 ```{r, eval=F}
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-dat <- aggregate(data.frame(prop=Symcap$Dominant), by=list(Reef.ID=Symcap$Reef.ID), 
-                 FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=Symcap)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=Symcap)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
 
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw.c
+# Bay Area
+## Dominant symbiont
+modd <- glm(Dominant ~ newDepth * Bay.Area, family="binomial", Symcap.f)
+anova(modd, test="Chisq")  # Significant Bay.Area * depth interaction
+plot(effect("newDepth:Bay.Area", modd), type="response", ylab="Prob. D-dominance")
+## Color Morph
+modd <- glm(Color.Morph ~ newDepth * Bay.Area, family="binomial", Symcap.f)
+anova(modd, test="Chisq")  # Not significant
 
-manteltable = table(Symcap$Dom, Symcap$Color.Morph, Symcap$Reef.ID)
-nc <- aggregate(interaction(Symcap$Color.Morph, Symcap$Dom), 
-                by=list(Symcap$Reef.ID), FUN=table)
-nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
-XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
+# Reef Type
+## Dominant symbiont
+modd <- glm(Dominant ~ newDepth * Reef.Type, family="binomial", Symcap.f)
+anova(modd, test="Chisq")  # Significant Reef.Type * depth interaction
+plot(effect("newDepth:Reef.Type", modd), x.var="newDepth", type="response")
+## Color Morph
+modd <- glm(Color.Morph ~ newDepth * Reef.Type, family="binomial", Symcap.f)
+anova(modd, test="Chisq")  # Not significant
+plot(effect("newDepth:Reef.Type", modd), x.var="newDepth", type="response")
 
-Symcap$ColDom <- interaction(Symcap$Color.Morph, Symcap$Dom)
-model <- multinom(ColDom~newDepth+Reef.ID, na.omit(Symcap))
-means <- lsmeans(model, specs = "Reef.ID")
-means
-```
+# Adjust symbiont-color prevalence across reefs for depth effect
+model <- multinom(ColDom~newDepth+Reef.ID, Symcap.f)
+newdat <- data.frame(Reef.ID = levels(Symcap.f$Reef.ID),
+                     newDepth = mean(Symcap.f$newDepth))
+pred <- round(predict(model, newdata = newdat, "probs"), 7)
+adjprops <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
+actprops <- data.frame(Reef.ID=as.character(newdat[,1]),
+                       as.data.frame.matrix(prop.table(table(Symcap.f$Reef.ID, Symcap.f$ColDom), margin=1)))
 
-
-```{r, ColorMorph~ReefID, warning=FALSE, echo=FALSE, include=FALSE}
-results=table(Symcap$Color.Morph, Symcap$Reef.ID)
-chisq.test(results)
-```
-
-```{r, warning=FALSE, results='hide', echo=FALSE, include=FALSE, eval=F}
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
+# Test for spatial autocorrelation in color-symbiont distributions
+# Get Lat/Lon positions for each reef
+Latitude=aggregate(Latitude~Reef.ID, data=Symcap.f, FUN = mean)
+Longitude=aggregate(Longitude~Reef.ID, data = Symcap.f, FUN=mean)
 XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
-propCol=prop.table(propCol, margin = 2)
-propCol <- as.data.frame.matrix(propCol)
-props <- data.frame(t(propCol))
-props$Reef.ID <- rownames(props)
-XY<-merge(XY, props, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-
-rownames(XY) <- XY$Reef.ID
-XY <- XY[, -1]
-XY <- na.omit(XY)
-apply(XY, MARGIN=1, FUN=function(reef) {
-  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["Orange"], reef["Brown"]), radius = 7, col = c("orange", "sienna"))
-})
-```
-
-
-```{r, echo=FALSE, include=FALSE}
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
-propCol=prop.table(propCol, margin = 2)
-propCol <- as.data.frame.matrix(propCol)
-props <- data.frame(t(propCol))
-props$Reef.ID <- rownames(props)
-XY<-merge(XY, props, by="Reef.ID", all=T)
-reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
-col.dists <- dist(XY$Brown)
+# Mantel test comparing Bray-Curtis dissimilarity among reefs (composition of color-symbiont groups) vs. euclidean/physical distance among reefs
+df <- merge(XY, adjprops, by="Reef.ID")
+reef.dists <- dist(cbind(df$Longitude, df$Latitude))
+bc.dists <- vegan::vegdist(df[,4:7], method="bray")
 set.seed(12456)
-mantel(col.dists~reef.dists)
-```
+ecodist::mantel(bc.dists~reef.dists)  # No spatial autocorrelation
+
+# Test for differences in distribution among bay regions, reefs, and reef types
+mod.null <- multinom(ColDom~newDepth, Symcap.f)
+mod.bay <- multinom(ColDom~newDepth+Bay.Area, Symcap.f)
+mod.bay2 <- multinom(ColDom~newDepth*Bay.Area, Symcap.f)
+mod.reef <- multinom(ColDom~newDepth+Reef.ID, Symcap.f)
+mod.type <- multinom(ColDom~newDepth+Reef.Type, Symcap.f)
+mod.type2 <- multinom(ColDom~newDepth*Reef.Type, Symcap.f)
+
+anova(mod.bay2, mod.bay) # Bay area * depth is significant
+anova(mod.null, mod.reef) # No effect of reef id
+anova(mod.type2, mod.type) # Reef type * depth is significant
 
 
-```{r, results='hide', include=FALSE, eval=F}
-Symcap$Color <- ifelse(Symcap$Color.Morph=="Orange", 1, 0)
-dat <- aggregate(data.frame(prop=Symcap$Color), by=list(Reef.ID=Symcap$Reef.ID), FUN=mean, na.rm=T) 
-mod <- glm(Color ~ newDepth + Reef.ID, data=Symcap)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "Raw", "O.Adj")
 
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-propCol=table(Symcap$Color.Morph, Symcap$Reef.ID)
-propCol=prop.table(propCol, margin = 2)
-propCol <- as.data.frame.matrix(propCol)
-props <- data.frame(t(propCol))
-props$Reef.ID <- rownames(props)
-XY<-merge(XY, props, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$B.Adj <- 1-XY2$O.Adj
+## Location*Depth interactions with Multinomial models
+depthdat <- expand.grid(newDepth = seq(0,12,0.5), Reef.Type=c("Patch", "Fringe"))
+depthpred <- predict(mod.type2, newdata=depthdat, "probs")
+depthpred
+stackpoly(depthpred[1:25,c(4,2,3,1)], stack=T, main="Patch", col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
+          ylim=c(0,1), xaxlab=seq(0,12,0.5), xlab="Depth", ylab="Probability")
 
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-
-rownames(XY2) <- XY2$Reef.ID
-XY2 <- XY2[, -1]
-XY2 <- na.omit(XY2)
-apply(XY2, MARGIN=1, FUN=function(reef) {
-  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["O.Adj"], reef["B.Adj"]), radius = 7, 
-               col = c("orange", "sienna"))
-})
-```
-
-
-```{r, echo=FALSE, include=FALSE, eval=F}
-reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
-col.dists <- dist(XY2$O.Adj)
-set.seed(12456)
-mantel(col.dists~reef.dists)
-```
-
-
-```{r, Dom~ReefType, echo=FALSE, include=FALSE, eval=F}
-results=table(Symcap$Dom, Symcap$Reef.Type)
-chisq.test(results)
-```
-
-
-```{r, Dom~BayArea, echo=FALSE, include=FALSE, eval=F}
-results=table(Symcap$Dom, Symcap$Bay.Area)
-chisq.test(results)
-```
-
-
-```{r, Dom~ReefID, warning=FALSE, echo=FALSE, include=FALSE}
-results=table(Symcap$Dom, Symcap$Reef.ID)
-chisq.test(results)
-```
-
-```{r, warning=FALSE, results='hide', include=FALSE, eval=F}
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-propDom=table(Symcap$Dom, Symcap$Reef.ID)
-propDom=prop.table(propDom, margin = 2)
-propDom <- as.data.frame.matrix(propDom)
-props <- data.frame(t(propDom))
-props$Reef.ID <- rownames(props)
-XY<-merge(XY, props, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-
-rownames(XY) <- XY$Reef.ID
-XY <- XY[, -1]
-XY <- na.omit(XY)
-apply(XY, MARGIN=1, FUN=function(reef) {
-  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["C"], reef["D"]), radius = 7, col = c("blue", "red"))
-})
-```
-
-
-```{r, echo=FALSE, include=FALSE, eval=F}
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-propDom=table(Symcap$Dom, Symcap$Reef.ID)
-propDom=prop.table(propDom, margin = 2)
-propDom <- as.data.frame.matrix(propDom)
-props <- data.frame(t(propDom))
-props$Reef.ID <- rownames(props)
-XY<-merge(XY, props, by="Reef.ID", all=T)
-reef.dists <- dist(cbind(XY$Longitude, XY$Latitude))
-dom.dists <- dist(XY$C)
-set.seed(12456)
-mantel(dom.dists~reef.dists)
-```
-
-
-```{r, Raw_Values, message=FALSE, results='hide', echo=FALSE, include=FALSE, eval=F}
-Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
-Longitude=aggregate(Longitude~Reef.ID, data = Symcap, FUN=mean)
-XY<-merge(Latitude, Longitude, by="Reef.ID", all=T)
-newcoords <- LatLon2XY.centered(KBMap, XY$Latitude, XY$Longitude, zoom=13)
-XY$X <- newcoords$newX
-XY$Y <- newcoords$newY
-XY <- subset(XY, Reef.ID!="37")
-
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-dat <- aggregate(data.frame(prop=Symcap$Dominant), by=list(Reef.ID=Symcap$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=Symcap)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=Symcap)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
-
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw.c
-
-PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
-
-rownames(XY2) <- XY2$Reef.ID
-XY2 <- XY2[, -1]
-XY2 <- na.omit(XY2)
-apply(XY2, MARGIN=1, FUN=function(reef) {
-  floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["raw.c"], reef["raw.d"]), radius = 7, 
-               col = c("red", "blue"))
-})
-```
-
-
-```{r, Adjusted_for_Depth_Interaction, message=FALSE, results='hide', eval=F}
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-dat <- aggregate(data.frame(prop=Symcap$Dominant), by=list(Reef.ID=Symcap$Reef.ID), FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=Symcap)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=Symcap)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
-
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw.c
-```
-
-
-# Color Morph and Dominant Symbiont per Bay Area
-A multinomial logistic regression was performed on the interaction of color morph and dominant symbiont to discount the influence of depth on spatial distribution. 
-```{r, message=FALSE, results='hide'}
-Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
-dat <- aggregate(data.frame(prop=Symcap$Dominant), by=list(Reef.ID=Symcap$Reef.ID), 
-                 FUN=mean, na.rm=T) #prop D/reef
-mod <- glm(Dominant ~ newDepth + Reef.ID, data=Symcap)
-mod2 <- glm(Dominant ~ newDepth * Reef.ID, data=Symcap)
-library(lsmeans)
-lsm <- lsmeans(mod, specs="Reef.ID")
-lsm2 <- lsmeans(mod2, specs="Reef.ID")
-res <- merge(dat, data.frame(summary(lsm))[,c(1:2)], by="Reef.ID")
-res <- merge(res, data.frame(summary(lsm2))[,c(1:2)], by="Reef.ID")
-colnames(res) <- c("Reef.ID", "raw.c", "c.adj", "c.adj.int")
-
-XY2 <- merge(XY, res, by = "Reef.ID")
-XY2$d.adj <- 1-XY2$c.adj
-XY2$d.adj.int <- 1-XY2$c.adj.int
-XY2$raw.d <- 1-XY2$raw.c
-
-manteltable = table(Symcap$Dom, Symcap$Color.Morph, Symcap$Reef.ID)
-nc <- aggregate(interaction(Symcap$Color.Morph, Symcap$Dom), 
-                by=list(Symcap$Reef.ID), FUN=table)
-nc <- data.frame(Reef.ID=as.character(nc[,1]), prop.table(nc[,2], margin=1))
-XY3 <- merge(XY2, nc, by="Reef.ID", all=T)
-
-Symcap$ColDom <- interaction(Symcap$Color.Morph, Symcap$Dom)
-model <- multinom(ColDom~newDepth+Reef.ID, Symcap)
-means <- lsmeans(model, specs = "Reef.ID")
-means
-pp <- fitted(model)
-
-newdat <- data.frame(Reef.ID = levels(Symcap$Reef.ID),
-                   newDepth = mean(Symcap$newDepth, na.rm=T))
-pred <- predict(model, newdata = newdat, "probs")
-new <- data.frame(Reef.ID=as.character(newdat[,1]), pred)
-XY4 <- merge(XY3, new, by="Reef.ID", all=T)
-```
-
-
-When considering the effect of bay area on the interaction of color morph and dominant symbiont, the proportion of brown colonies dominated by D increases as you move from the north to the south of the bay. The proportion increases almost 6x, yet the small number of colonies makes this non-compelling. 
-```{r, ColDom~BayArea}
-Type=table(Symcap$ColDom, Symcap$Bay.Area)
-prop.table(Type, margin = 2)
-chisq.test(Type)
-```
-
-
-```{r, Color~ReefType, echo=FALSE, include=FALSE}
-results=table(Symcap$Color.Morph, Symcap$Reef.Type)
-chisq.test(results)
+stackpoly(depthpred[26:50,c(4,2,3,1)], stack=T, main="Fringe", col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
+          ylim=c(0,1), xaxlab=seq(0,12,0.5), xlab="Depth", ylab="Probability")
 ```
 
 
@@ -795,19 +536,20 @@ PlotOnStaticMap(KBMap, XY4$Latitude, XY4$Longitude)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
 axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
 
-XY4 <- merge(XY3, new, by="Reef.ID", all=T)
-XY4[XY4 == 0.000] <- 0.0000000001
-rownames(XY4) <- XY4$Reef.ID
-XY4 <- XY4[, -1]
-XY4 <- na.omit(XY4)
-apply(XY4, MARGIN=1, FUN=function(reef) {
+newcoords <- LatLon2XY.centered(KBMap, df$Latitude, df$Longitude, zoom=13)
+df$X <- newcoords$newX
+df$Y <- newcoords$newY
+rownames(df) <- df$Reef.ID
+df <- df[, -1]
+df <- na.omit(df)
+df[df==0] <- 0.0001
+apply(df, MARGIN=1, FUN=function(reef) {
   floating.pie(xpos = reef["X"], ypos = reef["Y"], 
-               x=c(reef["Brown.C.y"], reef["Orange.C.y"], reef["Brown.D.y"], 
-                   reef["Orange.D.y"]), radius = 7, 
-               col = c("royalblue3", "cornflowerblue", "red", "rosybrown2"))
+               x=as.numeric(reef[c("Brown.C", "Orange.C", "Brown.D", "Orange.D")]),
+               radius = 8, col = c("burlywood4","darkorange3","burlywood3","darkorange"))
 })
 
-legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("royalblue3", "cornflowerblue", "red", "rosybrown2"))
+legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("burlywood4","darkorange3","burlywood3","darkorange"))
 
 par(new=T, mar=c(14,21,0,0))
 HI <- readOGR("coast_n83.shp", "coast_n83") 
