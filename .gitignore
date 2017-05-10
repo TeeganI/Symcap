@@ -3,3 +3,7 @@
 .RData
 .DS_Store
 .Rapp.history
+.RDataTmp
+Markdown/Markdown_files
+Markdown/Markdown_cache
+Manuscript/

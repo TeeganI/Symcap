@@ -115,9 +115,9 @@ Symcap$ColDom <- interaction(Symcap$Color.Morph, Symcap$Dom)
 #### Adjust Depth by Mean Sea Level
 To account for the influence of tides, depth was adjusted according to the differences in mean sea level from the recorded sea level on each collection day to the nearest 6-minute interval. Mean sea level was obtained from NOAA daily tide tables for Moku o Lo'e.
 ```{r Adjust Depth, warning=FALSE, message=FALSE, results='hide'}
-JuneTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160601-20160630.csv")
-JulyTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160701-20160731.csv")
-AugustTide=read.csv("Tide Tables/Station_1612480_tide_ht_20160801-20160812.csv")
+JuneTide=read.csv("Data/Tide_Tables/Station_1612480_tide_ht_20160601-20160630.csv")
+JulyTide=read.csv("Data/Tide_Tables/Station_1612480_tide_ht_20160701-20160731.csv")
+AugustTide=read.csv("Data/Tide_Tables/Station_1612480_tide_ht_20160801-20160812.csv")
 Tide<-rbind(JuneTide, JulyTide, AugustTide)
 Tide$Time <- as.POSIXct(Tide$TimeUTC, format="%Y-%m-%d %H:%M:%S", tz="UTC")
 attributes(Tide$Time)$tzone <- "Pacific/Honolulu"
@@ -170,8 +170,8 @@ Collection sites represented on this map indicate the 9 fringe and 16 patch reef
 # Define map area and get satellite data from Google using RgoogleMaps
 #KB <- c(21.46087401, -157.809907) 
 #KBMap <- GetMap(center = KB, zoom = 13, maptype = "satellite", SCALE = 2, GRAYSCALE = #FALSE)
-#save(KBMap, file = "KBMap.Rdata")
-load("KBMap.Rdata") 
+#save(KBMap, file = "Data/KBMap.Rdata")
+load("Data/KBMap.Rdata") 
 
 # Get representative coordinates for each reef based on sample GPS data
 Latitude=aggregate(Latitude~Reef.ID, data=Symcap, FUN = mean)
