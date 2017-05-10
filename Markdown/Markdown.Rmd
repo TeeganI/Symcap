@@ -1,14 +1,13 @@
 ---
-title: "Symcap"
-author: "Teegan Innis"
-date: "March 9, 2017"
+title: "Depth-mediated interactions between color morph and symbiosis ecology in the coral _Montipora capitata_ in Kāne‘ohe Bay, O‘ahu, Hawai‘i"
+author: "Teegan Innis, Ross Cunning"
+date: "May 9, 2017"
 output: 
   html_document:
     toc: yes
     toc_depth: 2
     toc_float:
       collapsed: true
-    code_folding: hide
 ---
 --------------------------------------------------------------------------------------
 # Project Summary
@@ -187,6 +186,7 @@ XY <- subset(XY, Reef.ID!="37")
 XY <- merge(XY, unique(Symcap[, c("Reef.ID", "Reef.Type", "Bay.Area")]), by="Reef.ID")
 
 # Plot KBay Map
+png(filename = "Figures/Fig1.png", width = 169, height = 113, units = "mm", res=300)
 par(oma=c(3,3,0,0))
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude, 
                 pch=c(1,2)[XY$Reef.Type],
@@ -194,15 +194,20 @@ PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude,
                 lwd=2, cex = 1.2)
 axis(1, at = LatLon2XY.centered(KBMap, NA, c(-157.85, -157.81, -157.77))$newX, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("157.85°W", "157.81°W", "157.77°W"), padj = -2.5, cex.axis = 0.75)
 axis(2, at = LatLon2XY.centered(KBMap, c(21.42, 21.46, 21.50), NA)$newY, tcl=0.5, line = 0.5, col = "ghostwhite", col.ticks = "black", lwd = 1, outer = TRUE, labels = c("21.42°N", "21.46°N", "21.50°N"), padj = 0.5, hadj = 0.60, las = 1, cex.axis = 0.75)
+legend("bottomleft", legend=c("Northern", "Central", "Southern", "Fringe", "Patch"),
+       pch=c(22, 22, 22, 1, 2), col=c("green", "red", "blue", "black", "black"),
+       pt.bg=c("green", "red", "blue", "white", "white"))
 par(new=T, mar=c(14,21,0,0))
 HI <- readOGR("coast_n83.shp", "coast_n83") 
 HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
 plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
 rect(-157.87, 21.41, -157.75, 21.52)
 box()
+dev.off()
 ```
+![Figure 1](../Figures/Fig1.png)
 
-# Prevalence of symbionts and color morphs
+# Symbiont and color prevalence
 
 ## Symbiont Dominance
 Number of colonies dominated by either clade C or clade D.
@@ -241,17 +246,13 @@ table(Symcap.f$Color.Morph)
 ```
 
 ## Dominant Symbiont per Color Morph
-The number of brown and orange colonies that were dominated by clade C or D.
+The number (first table) and proportion (second table) of brown and orange colonies that were dominated by clade C or D. A chi-squared test was used to test for differences in these proportions.
 ```{r Dom~ColorMorph}
 results <- table(Symcap.f$Dom, Symcap.f$Color.Morph)
 results
 prop.table(results, margin = 2)
 
 chisq.test(results)
-
-par(mar=c(4, 4, 2, 6))
-barplot(prop.table(results, margin = 2), col = c("gray10", "gray100"), xlab = "Color Morph", ylab = "Symbiont Proportion")
-legend("topright", legend=c("C", "D"), fill=c("gray10", "gray100"), inset = c(-.2, 0), xpd = NA)
 ```
 
 ## Figure 4: Proportion clade D and Color Morph
@@ -270,28 +271,18 @@ axis(side = 1, at = c(1.3, 2.3, 3.3, 4.3, 5.3, 6.3), labels = c(">0%", "20%", "4
 axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 ```
 
-## Overall prevalence of color-symbiont combinations
-```{r}
-prop.table(table(Symcap.f$ColDom))
-
-depthmod <- multinom(ColDom ~ newDepth, Symcap.f)
-depthdat <- data.frame(newDepth = seq(0,12,0.5))
-depthpred <- predict(depthmod, newdata=depthdat, "probs")
-stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
-          ylim=c(0,1), xaxlab=depthdat$newDepth, xlab="Depth", ylab="Probability")
-legend("topright", legend=c("Brown.C",  "Brown.D", "Orange.C","Orange.D"),
-       fill=c("burlywood4","burlywood3","darkorange3","darkorange"))
-```
-
 # Patterns in spatial distribution
 ## Dominant symbiont
+A logistic regression is used to model the probability of a colony being D-dominated as a function of depth, bay area (N, S, Central), and reef type (patch, fringe). 
 ```{r Dom~Depth, message=FALSE, warning=FALSE}
 # Fit GLM for dominant symbiont
 Symcap$Dominant <- ifelse(Symcap$Dom=="C", 0, 1)
 dom <- glm(Dominant ~ newDepth * Bay.Area * Reef.Type, family="binomial", Symcap)
 anova(dom, test="Chisq")
-# Plot interaction effects
-plot(effect("newDepth:Reef.Type", dom), type="response", ylab="Prob. D-dominance", multiline=T, ci.style="bands")
+```
+The model shows that depth is the most significant predictor, but that the effect of depth is different for patch vs. fringe reefs, due to the significant Depth * Reef.Type interaction. We plot the overall effect of depth averaged across the entire bay, as well as the specific effect of depth for patch reefs and fringing reefs in the figure below.
+
+```{r}
 # Get fitted values for overall depth effect
 dom.fit <- data.frame(Effect(focal.predictors = "newDepth", mod = dom, 
                             xlevels = list(newDepth=seq(0,11,0.1))))
@@ -311,19 +302,23 @@ barplot(dom.props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)),
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 par(lwd=1)
-legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(-.2, 0), xpd = NA)
+legend("topright", legend=c("C", "D", "KBay", "patch", "fringe"),
+       pch=c(22, 22, NA, NA, NA), 
+       pt.bg=c(alpha("blue", 0.25), alpha("red", 0.25), NA, NA, NA),
+       xpd = NA, lty=c(0,0,1,3,2), pt.cex=c(2,2,1,1,1))
 par(new = T)
 par(mar=c(4.2, 4, 2, 6))
-plot(dom.fit$fit~dom.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
+plot(dom.fit$fit~dom.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-dominance")
 
 # Depth at which probability of C vs. D dominance is 50/50
 seq(0,11,0.1)[which.min(abs(dom.fit$fit-0.5))]
 
 with(subset(dom.fit2, Reef.Type=="Fringe"), lines(fit ~ newDepth, lty=2))
 with(subset(dom.fit2, Reef.Type=="Patch"), lines(fit ~ newDepth, lty=3))
+
 ```
 
-Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m depth intervals when pooling all samples collected. Overlaid line indicates probability of a colony being D-dominated across depths.
+Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m depth intervals when pooling all samples collected. Overlaid lines indicate probability of a colony being D-dominated for the entire bay (thick solid line), and for fringing reefs (dashed line) and patch reefs (dotted line).
 
 ## Color Morph
 ```{r ColorMorph~Depth, message=FALSE, warning=FALSE}
@@ -331,8 +326,6 @@ Bars indicate relative frequency of occurence of clade C vs. D dominance at 1m d
 Symcap.f$Color <- ifelse(Symcap.f$Color.Morph=="Orange", 0, 1)
 cm <- glm(Color.Morph ~ newDepth * Bay.Area * Reef.Type, family="binomial", Symcap.f)
 anova(cm, test="Chisq") 
-# Plot interaction effects
-plot(effect("newDepth:Reef.Type", cm), type="response", ylab="Prob. Color", multiline=T, ci.style="bands")
 # Get fitted values
 cm.fit <- data.frame(Effect(focal.predictors = "newDepth", mod = cm, 
                             xlevels = list(newDepth=seq(0,11,0.1))))
@@ -348,7 +341,10 @@ barplot(cm.props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)),
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 par(lwd=1)
-legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(-.22, 0), xpd = NA)
+legend("topright", legend=c("Brown", "Orange", "KBay", "patch", "fringe"),
+       pch=c(22, 22, NA, NA, NA), 
+       pt.bg=c(alpha("sienna", 0.25), alpha("orange", 0.25), NA, NA, NA), 
+       xpd = NA, lty=c(0,0,1,3,2), pt.cex=c(2,2,1,1,1))
 par(new = T)
 par(mar=c(4.2, 4, 2, 6))
 plot(cm.fit$fit~cm.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
@@ -364,10 +360,17 @@ Bars indicate relative frequency of brown vs. orange color morph dominance at 1m
 ## Color-Symbiont Interaction
 While brown colonies were always more likely C-dominated, orange colonies were observed to switch from D to C dominance. The depth threshold where this switch occurred is represented here.
 ```{r, warning=FALSE}
-# Probability of C vs. D dominance in Orange and Brown colonies across Depth
-# Orange colonies
+# Probability of D dominance in Orange and Brown colonies across Depth
 Symcap.f$Dominant <- ifelse(Symcap.f$Dom=="C", 0, 1)
 mod <- glm(Dominant ~ newDepth * Color.Morph, family="binomial", data=Symcap.f)
+anova(mod, test="Chisq")
+
+# Test to see if relationship between depth and D-dominance in orange colonies differs between patch and fringe reefs (not enough Brown-D colonies to support full factorial model)
+mod2 <- glm(Dominant ~ newDepth * Reef.Type, family="binomial",
+           data=subset(Symcap.f, Color.Morph=="Orange"))
+anova(mod2, test="Chisq")  # depth*reef.type interaction is NOT significant
+
+# Get fitted values for probability of D-dominance in orange and brown colonies across depth
 int.fit <- data.frame(Effect(focal.predictors=c("newDepth", "Color.Morph"), mod=mod, 
                             xlevels=list(newDepth=seq(0,11,0.1)), type="response"))
 with(subset(int.fit, Color.Morph=="Orange"), {
@@ -381,10 +384,12 @@ abline(h = 0.5, lty=2)
 
 # Point at which probability of C or D dominance is 50/50
 with(subset(int.fit, Color.Morph=="Orange"), seq(0,11,0.1)[which.min(abs(fit-0.5))])
-with(subset(int.fit, Color.Morph=="Brown"), seq(0,11,0.1)[which.min(abs(fit-0.5))])
+# (not applicable for Brown colonies)
+
 # Probability of D-dominance at 1m
 with(subset(int.fit, Color.Morph=="Orange"), fit[seq(0,11,0.1)==1])
 with(subset(int.fit, Color.Morph=="Brown"), fit[seq(0,11,0.1)==1])
+
 # Probability of D-dominance at 10m
 with(subset(int.fit, Color.Morph=="Orange"), fit[seq(0,11,0.1)==11])
 with(subset(int.fit, Color.Morph=="Brown"), fit[seq(0,11,0.1)==11])
@@ -392,32 +397,46 @@ with(subset(int.fit, Color.Morph=="Brown"), fit[seq(0,11,0.1)==11])
 ```
 
 ## Figure 5: Depth Effects
+This three-panel figure summarizes the influence of depth (and interaction with reef type) on the dominant symbiont (top) and color morph of *M. capitata* (middle), and the differing influence of depth on dominant symbiont in brown vs. orange colonies (bottom).
 ```{r 3-panel Depth, message=FALSE, warning=FALSE, results='hide', fig.height=6, fig.width=3.1}
-par(mfrow=c(3,1))
-
+# Top panel: Symbiont dominance
+par(mfrow=c(3,1), mgp=c(1.5,0.5,0), tcl=0.25)
+par(mar=c(2, 4, 2, 6))
 barplot(dom.props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 par(lwd=1)
-legend("topright", legend=c("C", "D"), fill=c(alpha("blue", 0.25), alpha("red", 0.25)), inset = c(-.2, 0), xpd = NA)
+legend("topright", legend=c("C", "D", "KBay", "patch", "fringe"),
+       pch=c(22, 22, NA, NA, NA), 
+       pt.bg=c(alpha("blue", 0.25), alpha("red", 0.25), NA, NA, NA),
+       lty=c(0,0,1,3,2), pt.cex=c(2,2,1,1,1))
 par(new = T)
-par(mar=c(4.2, 4, 2, 6))
-plot(dom.fit$fit~dom.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of D-Dominance")
+par(mar=c(2.1, 4, 2, 6))
+plot(dom.fit$fit~dom.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="Probability of D-dominance")
+with(subset(dom.fit2, Reef.Type=="Fringe"), lines(fit ~ newDepth, lty=2))
+with(subset(dom.fit2, Reef.Type=="Patch"), lines(fit ~ newDepth, lty=3))
 
-par(mar=c(4, 4, 2, 6), lwd = 0.25)
+# Middle panel: Color morph
+par(mar=c(2, 4, 2, 6), lwd = 0.25)
 barplot(cm.props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
 par(lwd=1)
-legend("topright", legend=c("Brown", "Orange"), fill=c(alpha("sienna", 0.25), alpha("orange", 0.25)), inset = c(-.22, 0), xpd = NA)
+legend("topright", legend=c("Brown", "Orange", "KBay", "patch", "fringe"),
+       pch=c(22, 22, NA, NA, NA), 
+       pt.bg=c(alpha("sienna", 0.25), alpha("orange", 0.25), NA, NA, NA),
+       lty=c(0,0,1,3,2), pt.cex=c(2,2,1,1,1))
 par(new = T)
-par(mar=c(4.2, 4, 2, 6))
-plot(cm.fit$fit~cm.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="Depth (m)", ylab="Probability of Orange-Dominance")
+par(mar=c(2.1, 4, 2, 6))
+plot(cm.fit$fit~cm.fit$newDepth, xaxs="i", yaxs="i", xlim=c(0,11), ylim=c(0,1), type="l", lwd = 3, xlab="", ylab="Probability of Orange Color Morph")
+with(subset(cm.fit2, Reef.Type=="Fringe"), lines(fit ~ newDepth, lty=2))
+with(subset(cm.fit2, Reef.Type=="Patch"), lines(fit ~ newDepth, lty=3))
 
+# Bottom panel: interaction
 par(mar=c(4, 4, 0, 6))
 with(subset(int.fit, Color.Morph=="Orange"), {
   plot(fit ~ newDepth, ylim = c(0,1), type="l", col="orange", 
-       lwd=3, xlab="", ylab="")
+       lwd=3, xlab="", ylab="", xaxs="i", yaxs="i")
 })
 with(subset(int.fit, Color.Morph=="Brown"), {
   lines(fit ~ newDepth, col="sienna", lwd=3)
@@ -426,20 +445,31 @@ abline(h = 0.5, lty=2)
 
 ```
 
-## Combined color-symbiont phenotype
+## Bay-wide depth-distribution of color-symbiont combinations
+A multinomial logistic regression is used to model the occurrence of all four color-symbiont combinations across depth for all samples from Kaneohe Bay.
+```{r}
+prop.table(table(Symcap.f$ColDom))
+
+depthmod <- multinom(ColDom ~ newDepth, Symcap.f)
+depthdat <- data.frame(newDepth = seq(0,12,0.5))
+depthpred <- predict(depthmod, newdata=depthdat, "probs")
+stackpoly(depthpred[,c(4,2,3,1)], stack=T, col=rev(c("burlywood4","burlywood3","darkorange3","darkorange")),
+          ylim=c(0,1), xaxlab=depthdat$newDepth, xlab="Depth", ylab="Probability")
+legend("topright", legend=c("Brown.C",  "Brown.D", "Orange.C","Orange.D"),
+       fill=c("burlywood4","burlywood3","darkorange3","darkorange"))
+```
+
+## Depth distribution of color-symbiont combinations at Patch vs. Fringe reefs
+A multinomial logistic regression is used to model the occurrence of all four color-symbiont combinations across depth for patch reefs and fringing reefs separately (based on significant interaction between depth and reef type).
 ```{r}
 ## Fit multinomial model
 mod <- multinom(ColDom ~ newDepth * Bay.Area * Reef.Type, Symcap.f)
-mod <- step(mod)
+mod <- step(mod, trace=0)
 mod  # Only depth:Reef.Type interaction is significant
 
 ## Get fitted values
 depthdat <- expand.grid(newDepth=seq(0,10,0.5), Reef.Type=c("Patch", "Fringe"))
 depthpred <- predict(mod, newdata=depthdat, "probs")
-```
-
-## Figure X: Depth effects at Patch vs. Fringe reefs
-```{r}
 ### Plotting 
 par(mfrow=c(2,1), mar=c(2,3,2,2), mgp=c(1.5,0.3,0), tcl=-0.25, cex.axis=0.8)
 stackpoly(depthpred[1:21,c(4,2,3,1)], stack=T,
@@ -458,6 +488,7 @@ title("B. Fringe reefs", adj=0)
 ```
 
 ## Spatial auto-correlation
+Bray-Curtis dissimilarity among reefs is calculated based on the relative abundance of each color-symbiont phenotype at each reef (after correcting for the influence of depth across the whole bay to correct for differences in sampling effort across depth at different reefs). A Mantel test is then used to test whether Bray-Curtis dissimilarity is correlated with physical (Euclidean) distance, to test the alternative hypothesis that reefs closer together in space show more similar occurrences of color and dominant symbiont.
 ```{r}
 model <- multinom(ColDom~newDepth + Reef.ID, Symcap.f)
 newdat <- data.frame(Reef.ID = levels(Symcap.f$Reef.ID),
@@ -481,8 +512,10 @@ bc.dists <- vegan::vegdist(df[,4:7], method="bray")
 set.seed(12456)
 ecodist::mantel(bc.dists~reef.dists)  # No spatial autocorrelation
 ```
+No significant spatial auto-correlation is detected.
 
 ## Figure 6: Color Morph and Dominant Symbiont at each Reef
+The depth-corrected relative abundances of each color-symbiont combination at each reef are plotted on a map of Kaneohe Bay.
 ```{r, results='hide', eval=T}
 par(oma=c(3,3,0,0), mfrow=c(1,1))
 PlotOnStaticMap(KBMap, XY$Latitude, XY$Longitude)
