@@ -198,7 +198,7 @@ legend("bottomleft", legend=c("Northern", "Central", "Southern", "Fringe", "Patc
        pch=c(22, 22, 22, 1, 2), col=c("green", "red", "blue", "black", "black"),
        pt.bg=c("green", "red", "blue", "white", "white"))
 par(new=T, mar=c(14,21,0,0))
-HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- readOGR("Data/coast_n83.shp", "coast_n83") 
 HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
 plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
 rect(-157.87, 21.41, -157.75, 21.52)
@@ -549,7 +549,7 @@ apply(df, MARGIN=1, FUN=function(reef) {
 legend("bottomleft", legend=c("Brown-C", "Orange-C", "Brown-D", "Orange-D"), fill = c("burlywood4","darkorange3","burlywood3","darkorange"))
 
 par(new=T, mar=c(14,21,0,0))
-HI <- readOGR("coast_n83.shp", "coast_n83") 
+HI <- readOGR("Data/coast_n83.shp", "coast_n83") 
 HI <- spTransform(HI, CRS("+proj=longlat +datum=NAD83")) 
 plot(HI, xlim=c(-158.3, -157.6), ylim=c(21.35, 21.6), lwd=0.4, col="gray", bg="white")
 rect(-157.87, 21.41, -157.75, 21.52)
