@@ -209,16 +209,18 @@ dev.off()
 
 # Symbiont and color prevalence
 
-## Symbiont Dominance
-Number of colonies dominated by either clade C or clade D.
-```{r}
-table(Symcap$Dom)
-```
-
 ## Symbiont Community Composition
 Number of colonies with clade C only (C), C in greater abundance than D (CD), D in greater abundance than C (DC), or clade D only (D).
 ```{r}
 table(Symcap$Mix)
+prop.table(table(Symcap$Mix))
+```
+
+## Symbiont Dominance
+Number of colonies dominated by either clade C or clade D.
+```{r}
+table(Symcap$Dom)
+prop.table(table(Symcap$Dom))
 ```
 
 ### Symbiont Community Composition per Dominant Symbiont
@@ -235,7 +237,7 @@ out
 png("Figures/Fig3.png", width=81, height=81, units="mm", res=300)
 par(mar=c(3, 3, 1, 4.5), mgp=c(2,0.5,0), tcl=-0.25, cex=0.8)
 barplot(prop.table(results, margin = 2), col = c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), xlab = "Dominant Symbiont", ylab = "Proportion of Colonies")
-legend("topright", legend=c("C", "CD", "DC", "D"), fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), inset = c(-.35, 0), xpd = NA)
+legend("topright", legend=c("C", "C>D", "D>C", "D"), fill=c(alpha("blue", 0.75), alpha("blue", 0.25), alpha("red", 0.25), alpha("red", 0.75)), inset = c(-.35, 0), xpd = NA)
 dev.off()
 ```
 ![Figure 3](../Figures/Fig3.png)
@@ -246,6 +248,7 @@ dev.off()
 The overall prevalence of orange and brown colonies in the dataset. Note that for all analyses involving color, colonies with amiguous color assignemnts (only 3/5 observers assigning the same color morph) are filtered out of the dataset.
 ```{r}
 table(Symcap.f$Color.Morph)
+prop.table(table(Symcap.f$Color.Morph))
 ```
 
 ## Dominant Symbiont per Color Morph
@@ -277,6 +280,11 @@ axis(side = 1, at = c(0.5, 7.2), labels = c("All C", "All D"), tick = FALSE)
 dev.off()
 ```
 ![Figure 4](../Figures/Fig4.png)
+
+## Overall prevalence of color-symbiont phenotypes
+```{r}
+prop.table(table(Symcap.f$ColDom))
+```
 
 # Patterns in spatial distribution
 ## Dominant symbiont
@@ -413,6 +421,7 @@ par(mar=c(1.5, 3, 1.5, 1))
 barplot(dom.props[,1:11], col = c(alpha("red", 0.25), alpha("blue", 0.25)), 
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+text(par("usr")[1], par("usr")[4], labels="A.", xpd=NA, font=2, cex=1.5, adj=2.25)
 par(lwd=1)
 legend("topright", legend=c("C", "D", "KBay", "patch", "fringe"),
        pch=c(22, 22, NA, NA, NA), 
@@ -429,6 +438,7 @@ par(mar=c(2, 3, 1, 1), lwd = 0.25)
 barplot(cm.props[,1:11], col = c(alpha("orange", 0.25), alpha("sienna", 0.25)), 
         xlab = "", ylab = "",
         space = 0, xaxs="i", yaxs="i", axisnames = FALSE)
+text(par("usr")[1], par("usr")[4], labels="B.", xpd=NA, font=2, cex=1.5, adj=2.25)
 par(lwd=1)
 legend("topright", legend=c("Brown", "Orange", "KBay", "patch", "fringe"),
        pch=c(22, 22, NA, NA, NA), 
@@ -446,6 +456,7 @@ with(subset(int.fit, Color.Morph=="Orange"), {
   plot(fit ~ newDepth, ylim = c(0,1), type="l", col="orange", 
        lwd=3, xlab="Depth (m)", ylab="Probability of D-dominance", xaxs="i", yaxs="i")
 })
+text(par("usr")[1], par("usr")[4], labels="C.", xpd=NA, font=2, cex=1.5, adj=2.25)
 with(subset(int.fit, Color.Morph=="Brown"), {
   lines(fit ~ newDepth, col="sienna", lwd=3)
 })
@@ -458,8 +469,6 @@ dev.off()
 ## Bay-wide depth-distribution of color-symbiont combinations
 A multinomial logistic regression is used to model the occurrence of all four color-symbiont combinations across depth for all samples from Kaneohe Bay.
 ```{r, fig.width=4, fig.height=4}
-prop.table(table(Symcap.f$ColDom))
-
 depthmod <- multinom(ColDom ~ newDepth, Symcap.f)
 depthdat <- data.frame(newDepth = seq(0,12,0.5))
 depthpred <- predict(depthmod, newdata=depthdat, "probs")
