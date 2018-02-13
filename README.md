@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1172180.svg)](https://doi.org/10.5281/zenodo.1172180)
+
 This repository contains code to accompany the manuscript titled
 
 ### **Coral color and depth drive symbiosis ecology of Montipora capitata in Kāne'ohe Bay, O'ahu, Hawai'i**
